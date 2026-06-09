@@ -1,0 +1,289 @@
+{% extends "base.html" %} {% block title %}Instavox | {{ title }}{% endblock %}
+{% block content %}
+{% if can_manage %}
+<section class="content box">
+    <h1>Community Settings</h1>
+    <p>
+        Managing
+        <a href="/community/{{ community.slug }}">/community/{{ community.slug }}</a>
+    </p>
+    {% if manage_message != "" %}
+    <p
+        style="{% if manage_success %}color: hsl(120, 45%, 34%){% else %}color: hsl(0, 62%, 42%){% endif %}"
+    >
+        {{ manage_message }}
+    </p>
+    {% endif %}
+
+    <h2>Community Photo</h2>
+    <div
+        class="settings-crop-preview-frame settings-crop-preview-frame-profile"
+        style="
+            width: 120px;
+            height: 120px;
+            border-radius: 999px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+            border: 1px solid hsl(0, 0%, 84%);
+        "
+    >
+        <img
+            src="{{ community.profile_photo_url }}"
+            alt="{{ community.name }} photo"
+            style="
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                display: block;
+                transform-origin: center center;
+                {{ community.profile_photo_style }}
+            "
+        />
+    </div>
+
+    <form
+        action="/community/{{ community.slug }}/photo/upload"
+        method="post"
+        enctype="multipart/form-data"
+    >
+        <input type="file" name="file" accept="image/*" required />
+        <button type="submit" class="button">Upload new community photo</button>
+    </form>
+
+    {% if uploaded_profile_images.len() > 0 %}
+    <form
+        action="/community/{{ community.slug }}/photo/select"
+        method="post"
+        data-current-file-url="{{ community.profile_photo_url }}"
+        data-current-style="{{ community.profile_photo_style }}"
+    >
+        <p>Choose from uploaded profile photos:</p>
+        <div class="horizontal flex start" style="flex-wrap: wrap; gap: 0.5rem">
+            {% for image_url in uploaded_profile_images %}
+            <label class="vertical flex no padding" style="max-width: 120px">
+                <input type="radio" name="file_url" value="{{ image_url }}" />
+                <img
+                    src="{{ image_url }}"
+                    alt="Uploaded photo"
+                    style="
+                        width: 100px;
+                        height: 100px;
+                        object-fit: cover;
+                        border-radius: 999px;
+                    "
+                />
+            </label>
+            {% endfor %}
+        </div>
+        <button type="submit" class="button">Use selected community photo</button>
+    </form>
+    {% else %}
+    <p>No uploaded profile photos yet.</p>
+    {% endif %}
+
+    <form action="/community/{{ community.slug }}/photo/reset" method="post">
+        <button type="submit" class="button">Reset to default community photo</button>
+    </form>
+
+    <h2>Community Details</h2>
+    <form
+        action="/community/{{ community.slug }}/update"
+        method="post"
+        class="profile-bio-form"
+    >
+        <label for="community-name">Name</label>
+        <input
+            id="community-name"
+            name="name"
+            type="text"
+            maxlength="120"
+            value="{{ community.name }}"
+            required
+        />
+        <label for="community-description">Description</label>
+        <textarea
+            id="community-description"
+            name="description"
+            maxlength="1200"
+            rows="5"
+        >
+{{ community.description }}</textarea
+        >
+        <button type="submit" class="small button">Save changes</button>
+    </form>
+
+    <h2>Community Rules</h2>
+    <form
+        action="/community/{{ community.slug }}/rules/add"
+        method="post"
+        class="profile-bio-form"
+    >
+        <label for="community-rule-title">Rule title</label>
+        <input
+            id="community-rule-title"
+            name="title"
+            type="text"
+            maxlength="140"
+            placeholder="Be respectful"
+            required
+        />
+        <label for="community-rule-body">Rule details (optional)</label>
+        <textarea
+            id="community-rule-body"
+            name="body"
+            maxlength="2000"
+            rows="3"
+            placeholder="Explain this rule"
+        ></textarea>
+        <label for="community-rule-order">Rule order</label>
+        <input id="community-rule-order" name="sort_order" type="number" min="0" step="1" />
+        <button type="submit" class="small button">Add rule</button>
+    </form>
+
+    {% if community_rules.len() == 0 %}
+    <p>No rules created yet.</p>
+    {% else %}
+    {% for rule in community_rules %}
+    <section class="content box" style="margin-top: 0.75rem">
+        <form
+            action="/community/{{ community.slug }}/rules/{{ rule.rule_id }}/update"
+            method="post"
+            class="profile-bio-form"
+        >
+            <label for="rule-title-{{ rule.rule_id }}">Title</label>
+            <input
+                id="rule-title-{{ rule.rule_id }}"
+                name="title"
+                type="text"
+                maxlength="140"
+                value="{{ rule.title }}"
+                required
+            />
+            <label for="rule-body-{{ rule.rule_id }}">Details</label>
+            <textarea id="rule-body-{{ rule.rule_id }}" name="body" maxlength="2000" rows="3">
+{{ rule.body }}</textarea
+            >
+            <label for="rule-order-{{ rule.rule_id }}">Order</label>
+            <input
+                id="rule-order-{{ rule.rule_id }}"
+                name="sort_order"
+                type="number"
+                min="0"
+                step="1"
+                value="{{ rule.sort_order }}"
+            />
+            <div class="horizontal flex start no padding" style="gap: 0.5rem">
+                <button type="submit" class="small button">Save rule</button>
+            </div>
+        </form>
+        <form
+            action="/community/{{ community.slug }}/rules/{{ rule.rule_id }}/delete"
+            method="post"
+            style="margin-top: 0.5rem"
+        >
+            <button
+                type="submit"
+                class="small button"
+                style="background: hsl(0, 62%, 42%); border-color: hsl(0, 62%, 42%)"
+            >
+                Delete rule
+            </button>
+        </form>
+    </section>
+    {% endfor %}
+    {% endif %}
+
+    <h2>Community Moderators</h2>
+    <form
+        action="/community/{{ community.slug }}/moderators/add"
+        method="post"
+        class="profile-bio-form"
+    >
+        <label for="community-moderator-lookup">Username or username@{{ local_profile_domain }}</label>
+        <input
+            id="community-moderator-lookup"
+            name="moderator_lookup"
+            type="text"
+            maxlength="120"
+            placeholder="username"
+            required
+        />
+        <button type="submit" class="small button">Add moderator</button>
+    </form>
+
+    {% if moderator_candidates.len() > 0 %}
+    <p>Quick add from members:</p>
+    <div class="horizontal flex start" style="gap: 0.5rem; flex-wrap: wrap">
+        {% for candidate in moderator_candidates %}
+        <form action="/community/{{ community.slug }}/moderators/add" method="post">
+            <input type="hidden" name="moderator_lookup" value="{{ candidate.username }}" />
+            <button type="submit" class="small button">@{{ candidate.username }}</button>
+        </form>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if community_moderators.len() == 0 %}
+    <p>No moderators assigned yet.</p>
+    {% else %}
+    {% for moderator in community_moderators %}
+    <article class="friend-list-row" style="margin-top: 0.5rem">
+        <a
+            href="/user/{{ moderator.username }}@{{ local_profile_domain }}"
+            class="friend-list-link"
+            style="flex: 1"
+        >
+            <img
+                src="{{ moderator.profile_photo_url }}"
+                alt="@{{ moderator.username }} avatar"
+                class="post-author-avatar"
+                style="{{ moderator.profile_photo_style }}"
+            />
+            <div class="friend-list-meta">
+                <strong>@{{ moderator.username }}</strong>
+                {% if moderator.preferred_username != "" %}
+                <small>{{ moderator.preferred_username }}</small>
+                {% endif %} {% if moderator.is_owner %}
+                <small>Admin</small>
+                {% else %}
+                <small>Moderator</small>
+                {% endif %}
+            </div>
+        </a>
+        {% if !moderator.is_owner %}
+        <form action="/community/{{ community.slug }}/moderators/{{ moderator.user_id }}/remove" method="post">
+            <button
+                type="submit"
+                class="small button"
+                style="background: hsl(0, 0%, 35%); border-color: hsl(0, 0%, 35%)"
+            >
+                Remove
+            </button>
+        </form>
+        {% endif %}
+    </article>
+    {% endfor %}
+    {% endif %}
+
+    <form
+        action="/community/{{ community.slug }}/delete"
+        method="post"
+        style="margin-top: 1rem"
+    >
+        <button
+            type="submit"
+            class="small button"
+            style="background: hsl(0, 62%, 42%); border-color: hsl(0, 62%, 42%)"
+        >
+            Delete community
+        </button>
+    </form>
+</section>
+{% else %}
+<section class="content box">
+    <h1>Community Settings</h1>
+    <p>This page is unavailable.</p>
+    <a href="/communities" class="small button">Back to communities</a>
+</section>
+{% endif %}
+{% endblock %}

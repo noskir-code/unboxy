@@ -1,0 +1,68 @@
+{% extends "base.html" %} {% block title %}Log in!{% endblock %} {% block
+content %} {% if email_status_message != "" %}
+<div
+    class="alert {% if email_status_success %}alert-success{% else %}alert-danger{% endif %}"
+    role="alert"
+>
+    {{ email_status_message }}
+</div>
+{% endif %}
+<form id="loginForm">
+    <h1>Please sign in</h1>
+    <p
+        id="login-error-message"
+        class="alert alert-danger"
+        role="alert"
+        style="display: none"
+    ></p>
+    <label for="email">Email</label>
+    <input
+        type="email"
+        value=""
+        name="email"
+        id="email"
+        class="form-control"
+        autocomplete="email"
+        required
+        autofocus
+    />
+    <label for="password">Password</label>
+    <input
+        type="password"
+        name="password"
+        id="password"
+        class="form-control"
+        autocomplete="current-password"
+        required
+    />
+    <input
+        type="hidden"
+        name="_csrf_token"
+        data-controller="csrf-protection"
+        value=""
+    />
+
+    <div class="">
+        <input
+            type="checkbox"
+            name="remember_me"
+            id="remember_me"
+            value="true"
+        />
+        <label for="remember_me">Remember me</label>
+    </div>
+
+    <button class="button main" type="submit">Sign in</button>
+</form>
+<div class="content box" style="margin-top: 0.75rem">
+    <p class="no margin">
+        By continuing, you acknowledge the
+        <a href="/terms" target="_blank">Terms and Conditions</a> and
+        <a href="/privacy-policy" target="_blank">Privacy Policy</a>.
+    </p>
+</div>
+<div class="content box" style="margin-top: 0.75rem">
+    <p class="no margin">Don't have an account yet?</p>
+    <a href="/register" class="button" id="login-signup-link">Sign up</a>
+</div>
+{% endblock %}

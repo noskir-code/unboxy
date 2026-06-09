@@ -1,0 +1,810 @@
+{% extends "base.html" %} {% block title %}{{ title }}{% endblock %} {% block
+content %}
+<section class="content box">
+    <h1>Moderator dashboard</h1>
+    <p>Manage reports, user state, and post moderation.</p>
+</section>
+
+<section class="content box">
+    <h2>Team Instavox Session</h2>
+    <p class="no margin">
+        Switch your active session user to Team Instavox and switch back when needed.
+    </p>
+    {% if team_switch_message != "" %}
+    <p
+        class="no margin"
+        style="{% if team_switch_success %}color: hsl(120, 45%, 34%){% else %}color: hsl(0, 62%, 42%){% endif %}"
+    >
+        {{ team_switch_message }}
+    </p>
+    {% endif %} {% if is_acting_as_team %}
+    <form action="/moderator/switch-back" method="post">
+        <button type="submit" class="main">Switch back to moderator account</button>
+    </form>
+    {% else %}
+    <form action="/moderator/switch-team" method="post">
+        <button type="submit" class="main">Switch user to Team Instavox</button>
+    </form>
+    {% endif %}
+</section>
+
+<section class="content box post-create-card">
+    <h2>Publish as Instavox Team</h2>
+    <p class="no margin">
+        This publishes a public feed post from the dedicated Instavox Team account.
+    </p>
+    {% if team_post_message != "" %}
+    <p
+        class="no margin"
+        style="{% if team_post_success %}color: hsl(120, 45%, 34%){% else %}color: hsl(0, 62%, 42%){% endif %}"
+    >
+        {{ team_post_message }}
+    </p>
+    {% endif %}
+    <form
+        action="/moderator/posts/create"
+        method="post"
+        enctype="multipart/form-data"
+        class="post-create-form"
+    >
+        <label for="moderator-team-post-text">Text</label>
+        <textarea
+            id="moderator-team-post-text"
+            name="text"
+            placeholder="Write the Instavox Team announcement..."
+            maxlength="10000"
+        ></textarea>
+
+        <label for="moderator-team-post-images">Images (optional)</label>
+        <input
+            type="file"
+            id="moderator-team-post-images"
+            name="images"
+            accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/avif,image/bmp"
+            multiple
+        />
+
+        <button type="submit" class="main">Publish team post</button>
+    </form>
+</section>
+
+<section class="content box">
+    <h2>Overview</h2>
+    <div class="horizontal flex start no padding">
+        <div class="box">
+            <strong>Users</strong>
+            <p class="no margin">{{ stats.total_users }}</p>
+        </div>
+        <div class="box">
+            <strong>Moderators</strong>
+            <p class="no margin">{{ stats.total_moderators }}</p>
+        </div>
+        <div class="box">
+            <strong>Suspended/Banned</strong>
+            <p class="no margin">{{ stats.total_suspended }}</p>
+        </div>
+        <div class="box">
+            <strong>Posts</strong>
+            <p class="no margin">{{ stats.total_posts }}</p>
+        </div>
+        <div class="box">
+            <strong>Federated Instances</strong>
+            <p class="no margin">{{ stats.total_federated_instances }}</p>
+        </div>
+        <div class="box">
+            <strong>Discovered Instances</strong>
+            <p class="no margin">{{ stats.total_discovered_instances }}</p>
+        </div>
+        <div class="box">
+            <strong>Limited Instances</strong>
+            <p class="no margin">{{ stats.total_limited_instances }}</p>
+        </div>
+        <div class="box">
+            <strong>Banned Instances</strong>
+            <p class="no margin">{{ stats.total_banned_instances }}</p>
+        </div>
+        <div class="box">
+            <strong>Discovered Remote Users</strong>
+            <p class="no margin">{{ stats.total_discovered_remote_users }}</p>
+        </div>
+        <div class="box">
+            <strong>Limited Remote Users</strong>
+            <p class="no margin">{{ stats.total_limited_remote_users }}</p>
+        </div>
+        <div class="box">
+            <strong>Banned Remote Users</strong>
+            <p class="no margin">{{ stats.total_banned_remote_users }}</p>
+        </div>
+    </div>
+    <div class="box">
+        <strong>Federation protocols</strong>
+        {% if stats.protocol_breakdown.len() == 0 %}
+        <p class="no margin">No remote federation actors yet.</p>
+        {% else %}
+        <div class="horizontal flex start no padding" style="flex-wrap: wrap">
+            {% for protocol in stats.protocol_breakdown %}
+            <span class="small button" style="cursor: default"
+                >{{ protocol.name }}: {{ protocol.count }}</span
+            >
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    <div class="box">
+        <strong>Discovered instances</strong>
+        <p class="no margin">
+            Instances are discovered automatically and start as discovered by default.
+        </p>
+        {% if instance_message != "" %}
+        <p
+            class="no margin"
+            style="{% if instance_success %}color: hsl(120, 45%, 34%){% else %}color: hsl(0, 62%, 42%){% endif %}"
+        >
+            {{ instance_message }}
+        </p>
+        {% endif %}
+        {% if instances.len() == 0 %}
+        <p class="no margin">No discovered instances yet.</p>
+        {% else %} {% for instance in instances %}
+        <article class="box">
+            <p class="no margin"><strong>{{ instance.host }}</strong></p>
+            <p class="no margin">
+                <small
+                    >{{ instance.protocol }} | {{ instance.status }} | Remote actors:
+                    {{ instance.remote_actor_count }}</small
+                >
+            </p>
+            <p class="no margin">
+                <small
+                    >Discovered: {{ instance.discovered_at }} | Last seen:
+                    {{ instance.last_seen_at }}</small
+                >
+            </p>
+            <form
+                action="/moderator/instances/{{ instance.host }}/status?status=discovered"
+                method="post"
+            >
+                <button type="submit" class="small button">Discovered</button>
+            </form>
+            <form
+                action="/moderator/instances/{{ instance.host }}/status?status=limited"
+                method="post"
+            >
+                <button type="submit" class="small button">Limited</button>
+            </form>
+            <form action="/moderator/instances/{{ instance.host }}/status?status=ban" method="post">
+                <button type="submit" class="small button">Ban</button>
+            </form>
+        </article>
+        {% endfor %} {% endif %}
+    </div>
+    <div class="box">
+        <strong>Discovered remote users</strong>
+        <p class="no margin">
+            Cached remote users can be marked as discovered, limited, or ban.
+        </p>
+        {% if remote_user_message != "" %}
+        <p
+            class="no margin"
+            style="{% if remote_user_success %}color: hsl(120, 45%, 34%){% else %}color: hsl(0, 62%, 42%){% endif %}"
+        >
+            {{ remote_user_message }}
+        </p>
+        {% endif %}
+        {% if remote_users.len() == 0 %}
+        <p class="no margin">No discovered remote users yet.</p>
+        {% else %} {% for remote_user in remote_users %}
+        <article class="box">
+            <div class="horizontal flex start no padding" style="align-items: center">
+                <img
+                    src="{{ remote_user.profile_photo_url }}"
+                    alt="{{ remote_user.actor_id }} avatar"
+                    class="post-author-avatar"
+                />
+                <div>
+                    <p class="no margin">
+                        <strong>
+                            {% if remote_user.display_name != "" %}
+                            {{ remote_user.display_name }}
+                            {% else %}
+                            {{ remote_user.preferred_username }}
+                            {% endif %}
+                        </strong>
+                    </p>
+                    <p class="no margin">
+                        <small>{{ remote_user.preferred_username }} | {{ remote_user.host }}</small>
+                    </p>
+                </div>
+            </div>
+            <p class="no margin">
+                <small>Status: {{ remote_user.status }}</small>
+            </p>
+            <p class="no margin">
+                <small
+                    >Discovered: {{ remote_user.discovered_at }} | Last seen:
+                    {{ remote_user.last_seen_at }}</small
+                >
+            </p>
+            <p class="no margin">
+                <small><a href="{{ remote_user.actor_id }}">{{ remote_user.actor_id }}</a></small>
+            </p>
+            <form action="/moderator/remote-users/status" method="post">
+                <input type="hidden" name="actor_id" value="{{ remote_user.actor_id }}" />
+                <input type="hidden" name="status" value="discovered" />
+                <button type="submit" class="small button">Discovered</button>
+            </form>
+            <form action="/moderator/remote-users/status" method="post">
+                <input type="hidden" name="actor_id" value="{{ remote_user.actor_id }}" />
+                <input type="hidden" name="status" value="limited" />
+                <button type="submit" class="small button">Limited</button>
+            </form>
+            <form action="/moderator/remote-users/status" method="post">
+                <input type="hidden" name="actor_id" value="{{ remote_user.actor_id }}" />
+                <input type="hidden" name="status" value="ban" />
+                <button type="submit" class="small button">Ban</button>
+            </form>
+        </article>
+        {% endfor %} {% endif %}
+    </div>
+    <div class="box">
+        <strong>SMTP test</strong>
+        <p class="no margin">
+            Send a real test email using the current SMTP configuration.
+        </p>
+        {% if smtp_test_message != "" %}
+        <p
+            class="no margin"
+            style="{% if smtp_test_success %}color: hsl(120, 45%, 34%){% else %}color: hsl(0, 62%, 42%){% endif %}"
+        >
+            {{ smtp_test_message }}
+        </p>
+        {% endif %}
+        <form
+            action="/moderator/smtp-test"
+            method="post"
+            class="vertical flex no padding"
+        >
+            <input
+                type="email"
+                name="email"
+                placeholder="Recipient email (optional)"
+            />
+            <button type="submit" class="small button">
+                Send SMTP test email
+            </button>
+        </form>
+    </div>
+    <div class="box">
+        <strong>Beta invite links</strong>
+        <p class="no margin">
+            Invite-only signup is
+            {% if beta_invite_only_enabled %}<strong>enabled</strong>{% else %}
+            <strong>disabled</strong>{% endif %}.
+        </p>
+        {% if beta_invite_message != "" %}
+        <p
+            class="no margin"
+            style="{% if beta_invite_success %}color: hsl(120, 45%, 34%){% else %}color: hsl(0, 62%, 42%){% endif %}"
+        >
+            {{ beta_invite_message }}
+        </p>
+        {% endif %}
+        <form
+            action="/moderator/beta-invites"
+            method="post"
+            class="vertical flex no padding"
+        >
+            <input
+                type="email"
+                name="approved_email"
+                placeholder="Approved email (optional)"
+            />
+            <input
+                type="number"
+                name="expires_in_days"
+                min="0"
+                max="3650"
+                placeholder="Expires in days (0 = never)"
+            />
+            <button type="submit" class="small button">
+                Create beta invite link
+            </button>
+        </form>
+        <h3>Signup access requests</h3>
+        {% if beta_signup_request_message != "" %}
+        <p
+            class="no margin"
+            style="{% if beta_signup_request_success %}color: hsl(120, 45%, 34%){% else %}color: hsl(0, 62%, 42%){% endif %}"
+        >
+            {{ beta_signup_request_message }}
+        </p>
+        {% endif %}
+        {% if beta_signup_requests.len() == 0 %}
+        <p class="no margin">No pending signup requests.</p>
+        {% else %} {% for request in beta_signup_requests %}
+        <article class="box">
+            <p class="no margin"><strong>Email:</strong> {{ request.email }}</p>
+            {% if request.requested_username != "" %}
+            <p class="no margin">
+                <strong>Preferred username:</strong> {{ request.requested_username }}
+            </p>
+            {% endif %} {% if request.note != "" %}
+            <p class="no margin"><strong>Note:</strong> {{ request.note }}</p>
+            {% endif %}
+            <p class="no margin">
+                <small>Requested: {{ request.created_at }}</small>
+            </p>
+            <div class="horizontal flex start no padding">
+                <form
+                    action="/moderator/beta-signup-requests/{{ request.request_id }}/approve"
+                    method="post"
+                >
+                    <button type="submit" class="small button">Approve</button>
+                </form>
+                <form
+                    action="/moderator/beta-signup-requests/{{ request.request_id }}/reject"
+                    method="post"
+                >
+                    <button type="submit" class="small button">Reject</button>
+                </form>
+            </div>
+        </article>
+        {% endfor %} {% endif %}
+
+        {% if beta_invites.len() == 0 %}
+        <p class="no margin">No beta invite links created yet.</p>
+        {% else %} {% for invite in beta_invites %}
+        <article class="box">
+            <p class="no margin"><strong>Status:</strong> {{ invite.status }}</p>
+            {% if invite.approved_email != "" %}
+            <p class="no margin">
+                <strong>Approved email:</strong> {{ invite.approved_email }}
+            </p>
+            {% endif %}
+            <p class="no margin">
+                <strong>Signup link:</strong>
+                <a href="{{ invite.signup_url }}">{{ invite.signup_url }}</a>
+            </p>
+            <p class="no margin"><small>Token: {{ invite.token }}</small></p>
+            <p class="no margin">
+                <small>Created: {{ invite.created_at }}</small>
+            </p>
+            {% if invite.expires_at != "" %}
+            <p class="no margin">
+                <small>Expires: {{ invite.expires_at }}</small>
+            </p>
+            {% endif %} {% if invite.used_at != "" %}
+            <p class="no margin"><small>Used: {{ invite.used_at }}</small></p>
+            {% endif %} {% if invite.revoked_at != "" %}
+            <p class="no margin">
+                <small>Revoked: {{ invite.revoked_at }}</small>
+            </p>
+            {% endif %}
+            {% if invite.status == "active" %}
+            <form
+                action="/moderator/beta-invites/{{ invite.invite_id }}/revoke"
+                method="post"
+            >
+                <button type="submit" class="small button">Revoke</button>
+            </form>
+            {% endif %}
+        </article>
+        {% endfor %} {% endif %}
+    </div>
+</section>
+
+<section class="content box">
+    <h2>Reports</h2>
+    {% if reports.len() == 0 %}
+    <p>No reports yet.</p>
+    {% else %} {% for report in reports %}
+    <article class="post-card box">
+        <div class="post-card-header">
+            <strong>#{{ report.report_id }} {{ report.kind }}</strong>
+            <small>{{ report.status }}</small>
+        </div>
+        <p class="no margin">
+            Reporter:
+            <a
+                href="/user/{{ report.reporter_username }}@{{ local_profile_domain }}"
+                >@{{ report.reporter_username }}</a
+            >
+        </p>
+        {% if report.kind == "user" && report.target_user_public_id != 0 %}
+        <p class="no margin">
+            Target user:
+            <a
+                href="/user/{{ report.target_user_username }}@{{ local_profile_domain }}"
+                >@{{ report.target_user_username }}</a
+            >
+        </p>
+        {% endif %} {% if report.kind == "post" && report.target_post_id != 0 %}
+        <p class="no margin">
+            Target post:
+            <a href="/posts/{{ report.target_post_id }}"
+                >Post #{{ report.target_post_id }}</a
+            >
+            {% if report.target_post_author_public_id != 0 %} by
+            <a
+                href="/user/{{ report.target_post_author_username }}@{{ local_profile_domain }}"
+                >@{{ report.target_post_author_username }}</a
+            >
+            {% endif %}
+        </p>
+        {% endif %} {% if report.kind == "message" && report.target_message_id
+        != 0 %}
+        <p class="no margin">
+            Target message: #{{ report.target_message_id }} {% if
+            report.target_message_sender_public_id != 0 %} by
+            <a
+                href="/user/{{ report.target_message_sender_username }}@{{ local_profile_domain }}"
+                >@{{ report.target_message_sender_username }}</a
+            >
+            {% endif %}
+        </p>
+        {% if report.target_message_text != "" %}
+        <p class="no margin">Message: {{ report.target_message_text }}</p>
+        {% endif %}
+        {% endif %} {% if report.reason != "" %}
+        <p class="no margin">Reason: {{ report.reason }}</p>
+        {% endif %}
+        <div class="horizontal flex start no padding">
+            {% if report.kind == "post" && report.target_post_id != 0 %}
+            <a href="/posts/{{ report.target_post_id }}" class="small button">
+                Open post
+            </a>
+            {% if report.target_post_soft_deleted %}
+            <form
+                action="/moderator/posts/{{ report.target_post_id }}/unredact"
+                method="post"
+            >
+                <button type="submit" class="small button">
+                    Remove soft delete
+                </button>
+            </form>
+            {% else %}
+            <form
+                action="/moderator/posts/{{ report.target_post_id }}/redact"
+                method="post"
+            >
+                <button type="submit" class="small button">Delete content</button>
+            </form>
+            {% endif %}
+            <form
+                action="/moderator/posts/{{ report.target_post_id }}/delete"
+                method="post"
+            >
+                <button type="submit" class="small button">
+                    Permanent delete
+                </button>
+            </form>
+            {% if report.target_post_author_public_id != 0 %}
+            <form
+                action="/moderator/users/{{ report.target_post_author_public_id }}/role"
+                method="post"
+            >
+                <input type="hidden" name="role" value="suspended" />
+                <button type="submit" class="small button">Suspend user</button>
+            </form>
+            <form
+                action="/moderator/users/{{ report.target_post_author_public_id }}/role"
+                method="post"
+            >
+                <input type="hidden" name="role" value="ban" />
+                <button type="submit" class="small button">Ban user</button>
+            </form>
+            {% endif %} {% endif %}
+            {% if report.kind == "message" &&
+            report.target_message_sender_public_id != 0 %}
+            <form
+                action="/moderator/users/{{ report.target_message_sender_public_id }}/role"
+                method="post"
+            >
+                <input type="hidden" name="role" value="suspended" />
+                <button type="submit" class="small button">Suspend user</button>
+            </form>
+            <form
+                action="/moderator/users/{{ report.target_message_sender_public_id }}/role"
+                method="post"
+            >
+                <input type="hidden" name="role" value="ban" />
+                <button type="submit" class="small button">Ban user</button>
+            </form>
+            {% endif %}
+            <form
+                action="/moderator/reports/{{ report.report_id }}/delete"
+                method="post"
+            >
+                <button type="submit" class="small button">
+                    Delete report
+                </button>
+            </form>
+        </div>
+        <small data-utc-datetime="{{ report.created_at }}"
+            >{{ report.created_at }}</small
+        >
+    </article>
+    {% endfor %} {% endif %}
+</section>
+
+<section class="content box">
+    <h2>Users</h2>
+    {% if users.len() == 0 %}
+    <p>No users found.</p>
+    {% else %} {% for user in users %}
+    <article class="friend-list-row">
+        <a
+            href="/user/{{ user.username }}@{{ local_profile_domain }}"
+            class="friend-list-link"
+        >
+            <img
+                src="{{ user.profile_photo_url }}"
+                alt="@{{ user.username }} avatar"
+                class="post-author-avatar"
+                style="{{ user.profile_photo_style }}"
+            />
+            <div class="friend-list-meta">
+                <strong>@{{ user.username }}</strong>
+                {% if user.preferred_username != "" %}
+                <small>{{ user.preferred_username }}</small>
+                {% endif %}
+                <small>{{ user.email }}</small>
+                <small>Role: {{ user.role }}</small>
+                <small data-utc-datetime="{{ user.created_at }}"
+                    >{{ user.created_at }}</small
+                >
+            </div>
+        </a>
+
+        {% if user.role == "mod" || user.role == "moderator" %}
+        <button type="button" class="small button" disabled>
+            Host-managed moderator
+        </button>
+        {% else %}
+        <form
+            action="/moderator/users/{{ user.public_id }}/role"
+            method="post"
+            class="horizontal flex start no padding"
+        >
+            <select name="role">
+                <option
+                    value="user"
+                    {% if user.role.eq("user") %}selected{% endif %}
+                >
+                    user
+                </option>
+                <option
+                    value="suspended"
+                    {% if user.role.eq("suspended") %}selected{% endif %}
+                >
+                    suspended
+                </option>
+                <option
+                    value="ban"
+                    {% if user.role.eq("ban") || user.role.eq("banned") %}selected{% endif %}
+                >
+                    ban
+                </option>
+            </select>
+            <button type="submit" class="small button">Update</button>
+        </form>
+        {% endif %}
+    </article>
+    {% endfor %} {% endif %}
+</section>
+
+<section class="content box" id="moderator-posts-section">
+    <h2>Posts</h2>
+    <div class="horizontal flex start no padding">
+        <a
+            href="/moderator?post_tab=open&post_page=1"
+            class="small button {% if is_open_post_tab %}main{% endif %}"
+            >Open</a
+        >
+        <a
+            href="/moderator?post_tab=verified&post_page=1"
+            class="small button {% if is_verified_post_tab %}main{% endif %}"
+            >Verified</a
+        >
+    </div>
+    <p class="no margin">
+        Page {{ post_page }}{% if has_next_post_page %} (more available){% endif %}
+    </p>
+    <div class="horizontal flex start no padding">
+        {% if has_prev_post_page %}
+        <a
+            href="/moderator?post_tab={{ post_tab }}&post_page={{ prev_post_page }}"
+            class="small button"
+        >
+            Previous page
+        </a>
+        {% endif %} {% if has_next_post_page %}
+        <a
+            href="/moderator?post_tab={{ post_tab }}&post_page={{ next_post_page }}"
+            class="small button"
+        >
+            Next page
+        </a>
+        {% endif %}
+    </div>
+    <p
+        id="moderator-posts-empty"
+        class="no margin"
+        {% if posts.len() > 0 %}style="display: none"{% endif %}
+    >
+        {% if is_verified_post_tab %}No verified posts found.{% else %}No posts
+        found.{% endif %}
+    </p>
+    {% if posts.len() > 0 %} {% for post in posts %}
+    <article class="post-card box" data-moderator-post-card>
+        <div class="post-card-header">
+            <a
+                href="/user/{{ post.author_username }}@{{ local_profile_domain }}"
+                class="post-author-link"
+            >
+                <img
+                    src="{{ post.author_profile_photo_url }}"
+                    alt="@{{ post.author_username }} avatar"
+                    class="post-author-avatar"
+                    style="{{ post.author_profile_photo_style }}"
+                />
+                <strong>@{{ post.author_username }}</strong>
+            </a>
+            <small data-utc-datetime="{{ post.created_at }}"
+                >{{ post.created_at }}</small
+            >
+        </div>
+        {% if post.body != "" %}
+        <p class="post-body">{{ post.body }}</p>
+        {% endif %} {% if post.image_urls.len() > 0 %}
+        <div class="post-image-grid">
+            {% for image_url in post.image_urls %}
+            <a
+                href="{{ image_url }}"
+                data-post-image-preview-src="{{ image_url }}"
+                data-post-image-preview-alt="Post image"
+            >
+                <img
+                    src="{{ image_url }}"
+                    alt="Post image"
+                    class="post-image"
+                />
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %} {% if post.has_link_preview %} {% if post.link_image_url !=
+        "" %}
+        <a
+            href="{{ post.link_url }}"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="post-link-image-anchor"
+            data-post-image-preview-src="{{ post.link_image_url }}"
+            data-post-image-preview-alt="Link image preview"
+        >
+            <img
+                src="{{ post.link_image_url }}"
+                alt="Link image preview"
+                class="post-link-first-image"
+            />
+        </a>
+        {% endif %}
+        <a
+            href="{{ post.link_url }}"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="post-link-preview box"
+            data-link-preview-url="{{ post.link_url }}"
+        >
+            <div class="post-link-preview-meta">
+                <strong>{{ post.link_title }}</strong>
+                <p>{{ post.link_description }}</p>
+                <small>{{ post.link_url }}</small>
+            </div>
+        </a>
+        {% endif %}
+        <div class="horizontal flex start no padding">
+            <a href="/posts/{{ post.post_id }}" class="small button"
+                >View post</a
+            >
+            {% if post.body == "Deleted by moderator" %}
+            <form
+                action="/moderator/posts/{{ post.post_id }}/unredact"
+                method="post"
+            >
+                <button type="submit" class="small button">
+                    Remove soft delete
+                </button>
+            </form>
+            {% else %}
+            <form
+                action="/moderator/posts/{{ post.post_id }}/redact"
+                method="post"
+            >
+                <button type="submit" class="small button">Delete content</button>
+            </form>
+            {% endif %}
+            <form
+                action="/moderator/posts/{{ post.post_id }}/delete"
+                method="post"
+            >
+                <button type="submit" class="small button">Delete post</button>
+            </form>
+            {% if is_open_post_tab %}
+            <form
+                action="/moderator/posts/{{ post.post_id }}/seen"
+                method="post"
+                class="js-mark-post-seen-form"
+            >
+                <button type="submit" class="small button">Mark as seen</button>
+            </form>
+            {% endif %}
+        </div>
+    </article>
+    {% endfor %} {% endif %}
+    <div class="horizontal flex start no padding">
+        {% if has_prev_post_page %}
+        <a
+            href="/moderator?post_tab={{ post_tab }}&post_page={{ prev_post_page }}"
+            class="small button"
+        >
+            Previous page
+        </a>
+        {% endif %} {% if has_next_post_page %}
+        <a
+            href="/moderator?post_tab={{ post_tab }}&post_page={{ next_post_page }}"
+            class="small button"
+        >
+            Next page
+        </a>
+        {% endif %}
+    </div>
+</section>
+<script>
+    (() => {
+        const forms = document.querySelectorAll(".js-mark-post-seen-form");
+        if (!forms.length) return;
+
+        const postsSection = document.getElementById("moderator-posts-section");
+        const emptyState = document.getElementById("moderator-posts-empty");
+        if (!postsSection || !emptyState) return;
+
+        const updateEmptyState = () => {
+            const visibleCards = postsSection.querySelectorAll(
+                "[data-moderator-post-card]"
+            );
+            emptyState.style.display = visibleCards.length === 0 ? "" : "none";
+        };
+
+        forms.forEach((form) => {
+            form.addEventListener("submit", async (event) => {
+                event.preventDefault();
+
+                const button = form.querySelector("button[type='submit']");
+                if (button) button.disabled = true;
+
+                try {
+                    const response = await fetch(form.action, {
+                        method: "POST",
+                        headers: { "X-Requested-With": "fetch" },
+                        credentials: "same-origin",
+                    });
+
+                    if (!response.ok) {
+                        throw new Error("request_failed");
+                    }
+
+                    const card = form.closest("[data-moderator-post-card]");
+                    if (card) {
+                        card.remove();
+                        updateEmptyState();
+                    }
+                } catch (_error) {
+                    if (button) button.disabled = false;
+                    alert("Unable to mark this post as seen right now.");
+                }
+            });
+        });
+    })();
+</script>
+{% endblock %}

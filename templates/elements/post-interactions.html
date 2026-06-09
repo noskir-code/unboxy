@@ -1,0 +1,87 @@
+<div class="post-interactions">
+    {% if id != 0 %} {% if post.body != "Deleted by moderator" %}
+    <form
+        action="/posts/{{ post.post_id }}/like"
+        method="post"
+        class="post-interaction-form"
+        data-post-action="like"
+        data-post-id="{{ post.post_id }}"
+    >
+        <button
+            type="submit"
+            class="small button"
+            data-post-toggle-button
+            data-post-toggle-kind="like"
+            data-post-toggle-active="{% if post.liked_by_current_user %}1{% else %}0{% endif %}"
+        >
+            <span data-post-toggle-label
+                >{% if post.liked_by_current_user %}<i
+                    class="bi bi-heart-fill"
+                    style="color: red"
+                >
+                </i
+                >{% else %}<i class="bi bi-heart-fill"> </i>{% endif %}</span
+            >
+            <span data-post-toggle-count>{{ post.likes_count }}</span>
+        </button>
+    </form>
+    {% else %}
+    <span class="post-interaction-pill">Likes {{ post.likes_count }}</span>
+    {% endif %}
+    <div class="dropdown">
+        <button popovertarget="share-{{ post.post_id }}">
+            <i class="bi bi-send-fill"> </i>Share
+        </button>
+        <div id="share-{{ post.post_id }}" popover data-share-popover="true">
+            <div class="dropdown-list">
+                <form
+                    action="/posts/{{ post.post_id }}/share"
+                    method="post"
+                    class="post-interaction-form post-actions-form"
+                    data-post-action="share"
+                    data-post-id="{{ post.post_id }}"
+                >
+                    <button
+                        type="submit"
+                        class="button full-width"
+                        data-post-toggle-button
+                        data-post-toggle-kind="share"
+                        data-post-toggle-active="{% if post.shared_by_current_user %}1{% else %}0{% endif %}"
+                    >
+                        <span data-post-toggle-label
+                            >{% if post.shared_by_current_user %}Unshare in
+                            feed{% else %}Share in feed{% endif %}</span
+                        >
+                        (<span data-post-toggle-count
+                            >{{ post.shares_count }}</span
+                        >)
+                    </button>
+                </form>
+                <button
+                    type="button"
+                    class="button full-width"
+                    data-post-share-messenger
+                    data-post-share-url="/posts/{{ post.post_id }}"
+                >
+                    Share in messenger
+                </button>
+                <button
+                    type="button"
+                    class="button full-width"
+                    data-post-share-copy-link
+                    data-post-share-url="/posts/{{ post.post_id }}"
+                >
+                    Share with a link
+                </button>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <span class="post-interaction-pill">Likes {{ post.likes_count }}</span>
+    <span class="post-interaction-pill">Shares {{ post.shares_count }}</span>
+    {% endif %}
+    <span class="post-interaction-pill"
+        >Comments
+        <span data-post-comments-count>{{ post.comments_count }}</span>
+    </span>
+</div>

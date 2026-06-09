@@ -1,0 +1,195 @@
+<article
+    class="content box post-card"
+    id="post-{{ post.post_id }}"
+    data-post-id="{{ post.post_id }}"
+>
+    <div class="post-card-header">
+        <a
+            href="/user/{{ post.author_username }}@{{ local_profile_domain }}"
+            class="post-author-link"
+        >
+            <img
+                src="{{ post.author_profile_photo_url }}"
+                alt="@{{ post.author_username }} avatar"
+                class="post-author-avatar"
+                style="{{ post.author_profile_photo_style }}"
+            />
+            <strong>@{{ post.author_username }}</strong>
+        </a>
+        <div class="post-meta-actions">
+            <small class="post-date" data-utc-datetime="{{ post.created_at }}"
+                >{{ post.created_at }}</small
+            >
+            {% if post.community_slug != "" && post.community_name != "" %}
+            <small class="post-privacy-label">
+                <i class="bi bi-people-fill"> </i>
+                <a href="/community/{{ post.community_slug }}"
+                    >{{ post.community_name }}</a
+                >
+            </small>
+            {% else %}
+            <small class="post-privacy-label">
+                {% if post.visibility_label == "Public" %}
+                <i class="bi bi-globe"></i> {{ post.visibility_label }}
+                {% else if post.visibility_label == "Following" %}
+                <i class="bi bi-share-fill"> </i>{{ post.visibility_label }}
+                {% else if post.visibility_label == "Friends" %}
+                <i class="bi bi-people-fill"> </i>{{ post.visibility_label }}
+                {% else %}
+                <i class="bi bi-incognito"> </i>{{ post.visibility_label }}
+                {% endif %}
+            </small>
+            {% endif %}
+            {% if id != 0 %}
+            <div class="dropdown">
+                <button popovertarget="options-{{ post.post_id }}">...</button>
+                <div
+                    id="options-{{ post.post_id }}"
+                    popover
+                    data-options-popover="true"
+                >
+                    <ul class="dropdown-list">
+                        {% if post.author_public_id == id %}
+                        <button
+                            type="button"
+                            class="button full-width"
+                            data-post-edit-toggle="{{ post.post_id }}"
+                        >
+                            Edit
+                        </button>
+                        <form
+                            action="/posts/delete/{{ post.post_id }}"
+                            method="post"
+                            class="post-actions-form"
+                        >
+                            <button type="submit" class="button full-width">Delete</button>
+                        </form>
+                        {% else %}
+                        <form
+                            action="/reports/post/{{ post.post_id }}"
+                            method="post"
+                            class="post-actions-form"
+                        >
+                            <button type="submit" class="button full-width">Report</button>
+                        </form>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if post.body != "" %}
+    <p class="post-body post-body-clamp" data-post-body-clamp>{{ post.body }}</p>
+    <p
+        class="small post-see-more-link"
+        data-post-see-more
+        style="display: none"
+    >
+    </p>
+    {% endif %} {% if id != 0 && post.author_public_id == id %}
+    <form
+        action="/posts/edit/{{ post.post_id }}"
+        method="post"
+        class="post-edit-form"
+        id="post-edit-form-{{ post.post_id }}"
+        style="display: none"
+    >
+        <label for="post-edit-input-{{ post.post_id }}">Edit post</label>
+        <textarea
+            id="post-edit-input-{{ post.post_id }}"
+            name="text"
+            maxlength="10000"
+        >
+{{ post.body }}</textarea
+        >
+        <label for="post-edit-visibility-{{ post.post_id }}">Privacy</label>
+        <select id="post-edit-visibility-{{ post.post_id }}" name="visibility">
+            <option value="public" {% if post.visibility.eq("public") %}selected{% endif %}>
+                Public
+            </option>
+            <option
+                value="following"
+                {% if post.visibility.eq("following") %}selected{% endif %}
+            >
+                Following
+            </option>
+            <option
+                value="friends"
+                {% if post.visibility.eq("friends") %}selected{% endif %}
+            >
+                Friends
+            </option>
+            <option
+                value="private"
+                {% if post.visibility.eq("private") %}selected{% endif %}
+            >
+                Private
+            </option>
+        </select>
+        <div class="horizontal flex start no padding">
+            <button type="submit" class="small button">Save</button>
+            <button
+                type="button"
+                class="small button"
+                data-post-edit-cancel="{{ post.post_id }}"
+            >
+                Cancel
+            </button>
+        </div>
+    </form>
+    {% endif %} {% if post.image_urls.len() > 0 %}
+    <div class="post-image-grid">
+        {% for image_url in post.image_urls %}
+        <a
+            href="{{ image_url }}"
+            data-post-image-preview-src="{{ image_url }}"
+            data-post-image-preview-alt="Post image"
+        >
+            <img src="{{ image_url }}" alt="Post image" class="post-image" />
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %} {% if post.has_link_preview %} {% if post.link_image_url != ""
+    %}
+    <a
+        href="{{ post.link_url }}"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="post-link-image-anchor"
+        data-post-image-preview-src="{{ post.link_image_url }}"
+        data-post-image-preview-alt="Link image preview"
+    >
+        <img
+            src="{{ post.link_image_url }}"
+            alt="Link image preview"
+            class="post-link-first-image"
+        />
+    </a>
+    {% endif %}
+    <a
+        href="{{ post.link_url }}"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="post-link-preview box"
+        data-link-preview-url="{{ post.link_url }}"
+    >
+        <div class="post-link-preview-meta">
+            <strong>{{ post.link_title }}</strong>
+            <p>{{ post.link_description }}</p>
+            <small>{{ post.link_url }}</small>
+        </div>
+    </a>
+    {% endif %}
+    {% if post.community_slug != "" && post.community_name != "" %}
+    {% include "elements/post-interactions-community.html" %}
+    {% else %}
+    {% include "elements/post-interactions.html" %}
+    {% endif %}
+    <div class="post-comments-summary">
+        <a href="/posts/{{ post.post_id }}" class="small button">
+            See more
+        </a>
+    </div>
+</article>

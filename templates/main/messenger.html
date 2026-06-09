@@ -1,0 +1,1703 @@
+{% extends "base.html" %} {% block title %}Instavox | {{title}}{% endblock %} {%
+block content %}
+<div class="content box">
+    <div id="messenger-list-tab">
+        <div id="thread-list" class="conversation-list">
+            {% if threads.len() == 0 %}
+            <p>No conversations yet.</p>
+            {% else %} {% for thread in threads %} {% include
+            "models/message.html" %} {% endfor %} {% endif %}
+        </div>
+    </div>
+    <div id="messenger-conversation-tab" style="display: none">
+        <div
+            class="horizontal flex start no padding"
+            style="margin-bottom: 0.5rem"
+        >
+            <button
+                id="back-to-thread-list"
+                type="button"
+                class="button"
+                style="width: auto"
+            >
+                Back
+            </button>
+            <button
+                id="open-settings-tab"
+                type="button"
+                class="button"
+                style="width: auto"
+            >
+                Conversation settings
+            </button>
+        </div>
+        <div id="conversation-chat-tab" class="conversation-chat">
+            <div
+                id="group-add-list"
+                style="margin-bottom: 0.5rem{% if selected_group_id == 0 %}; display: none{% endif %}"
+            >
+                {% if selected_group_id != 0 %}
+                <details class="group-add-dropdown">
+                    <summary class="button" style="width: 100%">
+                        Add users to current group
+                    </summary>
+                    <div class="vertical flex no padding">
+                        {% for thread in threads %} {% if !thread.is_group %}
+                        <label
+                            class="horizontal flex start no padding"
+                            style="
+                                width: 100%;
+                                gap: 0.5rem;
+                                margin-bottom: 0.25rem;
+                            "
+                        >
+                            <input
+                                type="checkbox"
+                                class="group-add-check"
+                                data-user-id="{{ thread.user_id }}"
+                                data-username="{{ thread.name }}"
+                            />
+                            <span>@{{ thread.name }}</span>
+                        </label>
+                        {% endif %} {% endfor %}
+                    </div>
+                    <button
+                        type="button"
+                        class="button"
+                        id="group-add-submit"
+                        style="width: 100%; margin-top: 0.5rem"
+                    >
+                        Add selected users
+                    </button>
+                </details>
+                {% endif %}
+            </div>
+            <h3 id="conversation-title"></h3>
+            <ul id="messages"></ul>
+
+            <form id="chat-form">
+                <div class="messenger-composer-row">
+                    <div class="emoji-picker" id="emoji-picker-root">
+                        <button
+                            id="chat-emoji-toggle"
+                            type="button"
+                            class="small button emoji-toggle"
+                            aria-expanded="false"
+                            aria-controls="emoji-panel"
+                            title="Open emoji list"
+                        >
+                            😀
+                        </button>
+                        <div
+                            id="emoji-panel"
+                            class="emoji-panel box"
+                            style="display: none"
+                        >
+                            <p class="no margin emoji-panel-title">
+                                Emoji list
+                            </p>
+                            <div id="emoji-list" class="emoji-list"></div>
+                        </div>
+                    </div>
+                    <input
+                        id="chat-input"
+                        placeholder="Type a message..."
+                        autocomplete="off"
+                    />
+                </div>
+                <input
+                    id="chat-file"
+                    type="file"
+                    multiple
+                    accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+                />
+                <button id="chat-send-btn" type="submit">Send</button>
+            </form>
+        </div>
+        <div id="conversation-settings-tab" style="display: none">
+            <button
+                id="back-to-chat-tab"
+                type="button"
+                class="button"
+                style="width: auto; margin-bottom: 0.5rem"
+            >
+                Back to chat
+            </button>
+            <h3 class="no margin">Conversation settings</h3>
+            <button
+                id="delete-group-btn"
+                type="button"
+                class="button"
+                style="margin-top: 0.5rem{% if selected_group_id == 0 %}; display: none{% endif %}"
+            >
+                Delete this group
+            </button>
+            <button
+                id="quick-group-btn"
+                type="button"
+                class="button"
+                style="display: none; margin-top: 0.5rem"
+            >
+                Create group with this user
+            </button>
+        </div>
+    </div>
+</div>
+<div
+    id="image-preview-modal"
+    style="
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: rgba(0, 0, 0, 0.9);
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    "
+>
+    <button
+        id="image-preview-close"
+        type="button"
+        class="button round"
+        style="position: absolute; top: 1rem; right: 1rem"
+    >
+        <i class="bi bi-x-circle"></i>
+    </button>
+    <img
+        id="image-preview-full"
+        src=""
+        alt="attachment preview"
+        style="
+            max-width: min(96vw, 1600px);
+            max-height: 92vh;
+            object-fit: contain;
+            border-radius: 0.5rem;
+        "
+    />
+</div>
+
+<script>
+    const list = document.getElementById("messages");
+    const form = document.getElementById("chat-form");
+    const input = document.getElementById("chat-input");
+    const fileInput = document.getElementById("chat-file");
+    const sendButton = document.getElementById("chat-send-btn");
+    const emojiPickerRoot = document.getElementById("emoji-picker-root");
+    const emojiToggleButton = document.getElementById("chat-emoji-toggle");
+    const emojiPanel = document.getElementById("emoji-panel");
+    const emojiList = document.getElementById("emoji-list");
+    const threadList = document.getElementById("thread-list");
+    const messengerListTab = document.getElementById("messenger-list-tab");
+    const messengerConversationTab = document.getElementById(
+        "messenger-conversation-tab",
+    );
+    const conversationChatTab = document.getElementById(
+        "conversation-chat-tab",
+    );
+    const conversationSettingsTab = document.getElementById(
+        "conversation-settings-tab",
+    );
+    const groupAddList = document.getElementById("group-add-list");
+    const deleteGroupButton = document.getElementById("delete-group-btn");
+    const conversationTitle = document.getElementById("conversation-title");
+    const openSettingsTabButton = document.getElementById("open-settings-tab");
+    const backToChatTabButton = document.getElementById("back-to-chat-tab");
+    const backToThreadListButton = document.getElementById(
+        "back-to-thread-list",
+    );
+    const quickGroupButton = document.getElementById("quick-group-btn");
+    const imagePreviewModal = document.getElementById("image-preview-modal");
+    const imagePreviewClose = document.getElementById("image-preview-close");
+    const imagePreviewFull = document.getElementById("image-preview-full");
+
+    const params = new URLSearchParams(window.location.search);
+    const normalizeDirectUserId = (value) => {
+        const trimmed = String(value || "").trim();
+        if (!trimmed || trimmed === "0") return "";
+        return trimmed;
+    };
+    const targetUserLookup = (params.get("user") || "").trim();
+    const legacyTargetUserPublicId = normalizeDirectUserId(params.get("with"));
+    const resolvedTargetUserPublicId = normalizeDirectUserId(
+        "{{ selected_user_public_id }}",
+    );
+    const targetUserPublicId =
+        resolvedTargetUserPublicId || legacyTargetUserPublicId;
+    const targetGroupId = params.get("group");
+    const currentUserId = Number.parseInt("{{ user_id }}", 10) || 0;
+    const MESSENGER_SHARE_KEY = "instavox.pending_messenger_share";
+    let activeMessengerTab =
+        targetUserPublicId || targetGroupId ? "conversation" : "list";
+    let activeConversationTab = "chat";
+    const MESSAGE_HISTORY_PAGE_SIZE = 60;
+    const renderedMessageIds = new Set();
+    let oldestLoadedMessageId = 0;
+    let historyLoading = false;
+    let historyExhausted = false;
+    let initialScrollToBottomPending = true;
+
+    const readPendingMessengerShare = () => {
+        try {
+            return (
+                window.sessionStorage.getItem(MESSENGER_SHARE_KEY) || ""
+            ).trim();
+        } catch (_error) {
+            return "";
+        }
+    };
+
+    const clearPendingMessengerShare = () => {
+        try {
+            window.sessionStorage.removeItem(MESSENGER_SHARE_KEY);
+        } catch (_error) {}
+    };
+
+    const pendingMessengerShare = readPendingMessengerShare();
+
+    const applyMessengerTabVisibility = () => {
+        const hasConversation = Boolean(targetUserPublicId || targetGroupId);
+        if (messengerListTab) {
+            messengerListTab.style.display =
+                activeMessengerTab === "list" ? "" : "none";
+        }
+        if (messengerConversationTab) {
+            messengerConversationTab.style.display =
+                hasConversation && activeMessengerTab === "conversation"
+                    ? ""
+                    : "none";
+        }
+        if (backToThreadListButton) {
+            backToThreadListButton.style.display = hasConversation
+                ? ""
+                : "none";
+        }
+    };
+
+    const applyConversationTabVisibility = () => {
+        const hasConversation = Boolean(targetUserPublicId || targetGroupId);
+
+        if (openSettingsTabButton) {
+            openSettingsTabButton.style.display = hasConversation ? "" : "none";
+        }
+        if (!conversationChatTab || !conversationSettingsTab) return;
+
+        if (!hasConversation) {
+            activeConversationTab = "chat";
+            conversationChatTab.style.display = "";
+            conversationSettingsTab.style.display = "none";
+            return;
+        }
+
+        if (activeConversationTab === "settings") {
+            conversationChatTab.style.display = "none";
+            conversationSettingsTab.style.display = "";
+            if (openSettingsTabButton) {
+                openSettingsTabButton.style.display = "none";
+            }
+            return;
+        }
+
+        conversationChatTab.style.display = "";
+        conversationSettingsTab.style.display = "none";
+    };
+
+    if (openSettingsTabButton) {
+        openSettingsTabButton.addEventListener("click", () => {
+            if (!targetUserPublicId && !targetGroupId) return;
+            activeConversationTab = "settings";
+            applyConversationTabVisibility();
+        });
+    }
+
+    if (backToChatTabButton) {
+        backToChatTabButton.addEventListener("click", () => {
+            activeConversationTab = "chat";
+            applyConversationTabVisibility();
+        });
+    }
+
+    if (backToThreadListButton) {
+        backToThreadListButton.addEventListener("click", () => {
+            activeMessengerTab = "list";
+            activeConversationTab = "chat";
+            applyMessengerTabVisibility();
+            applyConversationTabVisibility();
+        });
+    }
+
+    const openImagePreview = (src, altText = "attachment preview") => {
+        if (!imagePreviewModal || !imagePreviewFull) return;
+        imagePreviewFull.src = src;
+        imagePreviewFull.alt = altText;
+        imagePreviewModal.style.display = "flex";
+        document.body.style.overflow = "hidden";
+    };
+
+    const closeImagePreview = () => {
+        if (!imagePreviewModal || !imagePreviewFull) return;
+        imagePreviewModal.style.display = "none";
+        imagePreviewFull.src = "";
+        document.body.style.overflow = "";
+    };
+
+    if (imagePreviewModal) {
+        imagePreviewModal.addEventListener("click", (event) => {
+            if (event.target === imagePreviewModal) {
+                closeImagePreview();
+            }
+        });
+    }
+
+    if (imagePreviewClose) {
+        imagePreviewClose.addEventListener("click", closeImagePreview);
+    }
+
+    const closeEmojiPanel = () => {
+        if (!emojiPanel || !emojiToggleButton) return;
+        emojiPanel.style.display = "none";
+        emojiToggleButton.setAttribute("aria-expanded", "false");
+    };
+
+    const openEmojiPanel = () => {
+        if (!emojiPanel || !emojiToggleButton) return;
+        emojiPanel.style.display = "";
+        emojiToggleButton.setAttribute("aria-expanded", "true");
+    };
+
+    const insertEmojiIntoInput = (emoji) => {
+        if (!input || input.disabled || !emoji) return;
+        const hasSelection =
+            typeof input.selectionStart === "number" &&
+            typeof input.selectionEnd === "number";
+        const start = hasSelection ? input.selectionStart : input.value.length;
+        const end = hasSelection ? input.selectionEnd : input.value.length;
+        const before = input.value.slice(0, start);
+        const after = input.value.slice(end);
+        input.value = `${before}${emoji}${after}`;
+
+        const nextCursor = start + emoji.length;
+        input.focus();
+        input.setSelectionRange(nextCursor, nextCursor);
+    };
+
+    const buildEmojiCatalog = () => {
+        let emojiRegex = null;
+        try {
+            emojiRegex = new RegExp("\\p{Emoji}", "u");
+        } catch (_error) {
+            emojiRegex = null;
+        }
+        const emojiRanges = [
+            [0x2194, 0x21aa],
+            [0x231a, 0x23fa],
+            [0x2460, 0x24ff],
+            [0x25a0, 0x27bf],
+            [0x2934, 0x2935],
+            [0x2b05, 0x2b55],
+            [0x3030, 0x303d],
+            [0x3297, 0x3299],
+            [0x1f000, 0x1faff],
+        ];
+
+        const emojis = new Set([
+            "#️⃣",
+            "*️⃣",
+            "0️⃣",
+            "1️⃣",
+            "2️⃣",
+            "3️⃣",
+            "4️⃣",
+            "5️⃣",
+            "6️⃣",
+            "7️⃣",
+            "8️⃣",
+            "9️⃣",
+        ]);
+
+        for (const [start, end] of emojiRanges) {
+            for (let codePoint = start; codePoint <= end; codePoint += 1) {
+                const glyph = String.fromCodePoint(codePoint);
+                if (!emojiRegex || emojiRegex.test(glyph)) {
+                    emojis.add(glyph);
+                }
+            }
+        }
+
+        for (let first = 0x1f1e6; first <= 0x1f1ff; first += 1) {
+            for (let second = 0x1f1e6; second <= 0x1f1ff; second += 1) {
+                emojis.add(String.fromCodePoint(first, second));
+            }
+        }
+
+        return Array.from(emojis);
+    };
+
+    const renderEmojiList = () => {
+        if (!emojiList || emojiList.dataset.ready === "true") return;
+        const emojis = buildEmojiCatalog();
+        const fragment = document.createDocumentFragment();
+        for (const emoji of emojis) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "emoji-item";
+            button.dataset.emoji = emoji;
+            button.textContent = emoji;
+            button.title = emoji;
+            fragment.appendChild(button);
+        }
+        emojiList.appendChild(fragment);
+        emojiList.dataset.ready = "true";
+    };
+
+    if (emojiToggleButton && emojiPanel && emojiList) {
+        emojiToggleButton.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const isOpen = emojiPanel.style.display !== "none";
+            if (isOpen) {
+                closeEmojiPanel();
+                return;
+            }
+            renderEmojiList();
+            openEmojiPanel();
+        });
+
+        emojiList.addEventListener("click", (event) => {
+            const button = event.target.closest(".emoji-item");
+            if (!button) return;
+            event.preventDefault();
+            insertEmojiIntoInput(button.dataset.emoji || "");
+        });
+
+        if (emojiPickerRoot) {
+            emojiPickerRoot.addEventListener("click", (event) =>
+                event.stopPropagation(),
+            );
+        }
+
+        document.addEventListener("click", () => {
+            closeEmojiPanel();
+        });
+    }
+
+    document.addEventListener("keydown", (event) => {
+        if (
+            event.key === "Escape" &&
+            imagePreviewModal?.style.display === "flex"
+        ) {
+            closeImagePreview();
+        }
+        if (event.key === "Escape") {
+            closeEmojiPanel();
+        }
+    });
+
+    const extractFirstLinkFromText = (value) => {
+        if (!value || typeof value !== "string") return "";
+        const match = value.match(/https?:\/\/[^\s<>"')]+/i);
+        if (!match || !match[0]) return "";
+        return match[0].replace(/[),.!?;:]+$/g, "");
+    };
+
+    const appendMessageTextWithLinks = (parent, value) => {
+        if (!parent || !value || typeof value !== "string") return;
+
+        const wrapper = document.createElement("span");
+        wrapper.className = "message-text";
+
+        const linkRegex = /https?:\/\/[^\s<>"')]+/gi;
+        let lastIndex = 0;
+        let hasLink = false;
+        let match = null;
+
+        while ((match = linkRegex.exec(value)) !== null) {
+            const rawUrl = match[0] || "";
+            const cleanUrl = rawUrl.replace(/[),.!?;:]+$/g, "");
+            const matchStart = match.index;
+
+            if (matchStart > lastIndex) {
+                wrapper.appendChild(
+                    document.createTextNode(value.slice(lastIndex, matchStart)),
+                );
+            }
+
+            if (cleanUrl) {
+                hasLink = true;
+                const anchor = document.createElement("a");
+                anchor.href = cleanUrl;
+                anchor.target = "_blank";
+                anchor.rel = "noopener noreferrer";
+                anchor.className = "message-inline-link";
+                anchor.textContent = cleanUrl;
+                wrapper.appendChild(anchor);
+
+                const trailing = rawUrl.slice(cleanUrl.length);
+                if (trailing) {
+                    wrapper.appendChild(document.createTextNode(trailing));
+                }
+            } else {
+                wrapper.appendChild(document.createTextNode(rawUrl));
+            }
+
+            lastIndex = matchStart + rawUrl.length;
+        }
+
+        if (lastIndex < value.length) {
+            wrapper.appendChild(
+                document.createTextNode(value.slice(lastIndex)),
+            );
+        }
+
+        if (!hasLink && wrapper.textContent === "") {
+            wrapper.textContent = value;
+        }
+
+        parent.appendChild(wrapper);
+    };
+
+    const extractDirectImageLink = (firstLink) => {
+        if (!firstLink) return "";
+        try {
+            const parsed = new URL(firstLink);
+            const extension = parsed.pathname.toLowerCase().split(".").pop();
+            if (
+                ["jpg", "jpeg", "png", "gif", "webp", "avif", "bmp"].includes(
+                    extension || "",
+                )
+            ) {
+                return firstLink;
+            }
+        } catch (_error) {}
+
+        return "";
+    };
+
+    const linkImageCache = new Map();
+    const pendingLinkImageRequests = new Map();
+
+    const resolveFirstImageForLink = async (linkUrl) => {
+        if (!linkUrl) return "";
+
+        const directImage = extractDirectImageLink(linkUrl);
+        if (directImage) return directImage;
+
+        if (linkImageCache.has(linkUrl)) {
+            return linkImageCache.get(linkUrl) || "";
+        }
+        if (pendingLinkImageRequests.has(linkUrl)) {
+            return pendingLinkImageRequests.get(linkUrl);
+        }
+
+        const request = fetch(
+            `/v1/auth/link-first-image?url=${encodeURIComponent(linkUrl)}`,
+            { credentials: "same-origin" },
+        )
+            .then((response) => (response.ok ? response.json() : null))
+            .then((payload) => {
+                const imageUrl =
+                    payload && typeof payload.image_url === "string"
+                        ? payload.image_url.trim()
+                        : "";
+                linkImageCache.set(linkUrl, imageUrl);
+                return imageUrl;
+            })
+            .catch(() => {
+                linkImageCache.set(linkUrl, "");
+                return "";
+            })
+            .finally(() => {
+                pendingLinkImageRequests.delete(linkUrl);
+            });
+
+        pendingLinkImageRequests.set(linkUrl, request);
+        return request;
+    };
+
+    const appendMessageLinkImage = (li, imageUrl) => {
+        if (!li || !imageUrl) return;
+        if (li.querySelector(".message-link-image-anchor")) return;
+
+        const link = document.createElement("a");
+        link.href = imageUrl;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.className = "message-link-image-anchor";
+        link.setAttribute("data-post-image-preview-src", imageUrl);
+        link.setAttribute("data-post-image-preview-alt", "Linked image");
+
+        const img = document.createElement("img");
+        img.src = imageUrl;
+        img.alt = "Linked image preview";
+        img.className = "message-link-image";
+        img.addEventListener(
+            "load",
+            () => {
+                if (initialScrollToBottomPending) {
+                    scrollMessagesToBottom();
+                }
+            },
+            { once: true },
+        );
+        link.appendChild(img);
+
+        li.appendChild(link);
+    };
+
+    const normalizeMessageAttachments = (msg) => {
+        const normalized = [];
+        const seenUrls = new Set();
+
+        if (Array.isArray(msg?.attachments)) {
+            for (const attachment of msg.attachments) {
+                const url = String(
+                    attachment?.url ||
+                        attachment?.attachment_url ||
+                        attachment?.file_path ||
+                        "",
+                ).trim();
+                if (!url || seenUrls.has(url)) continue;
+
+                const name = String(
+                    attachment?.name ||
+                        attachment?.attachment_name ||
+                        attachment?.file_name ||
+                        "attachment",
+                ).trim();
+                const mime = String(
+                    attachment?.mime ||
+                        attachment?.attachment_mime ||
+                        attachment?.mime_type ||
+                        "application/octet-stream",
+                ).trim();
+                const sizeValue =
+                    typeof attachment?.size === "number"
+                        ? attachment.size
+                        : typeof attachment?.attachment_size === "number"
+                          ? attachment.attachment_size
+                          : 0;
+
+                normalized.push({
+                    url,
+                    name: name || "attachment",
+                    mime: mime || "application/octet-stream",
+                    size: sizeValue,
+                });
+                seenUrls.add(url);
+            }
+        }
+
+        const legacyUrl = String(msg?.attachment_url || "").trim();
+        if (legacyUrl && !seenUrls.has(legacyUrl)) {
+            normalized.push({
+                url: legacyUrl,
+                name: String(msg?.attachment_name || "attachment").trim(),
+                mime: String(
+                    msg?.attachment_mime || "application/octet-stream",
+                ).trim(),
+                size:
+                    typeof msg?.attachment_size === "number"
+                        ? msg.attachment_size
+                        : 0,
+            });
+        }
+
+        return normalized;
+    };
+
+    const appendMessageAttachments = (li, msg) => {
+        if (!li || !msg) return;
+        const attachments = normalizeMessageAttachments(msg);
+        if (attachments.length === 0) return;
+
+        const attachmentBlock = document.createElement("div");
+        attachmentBlock.className = "message-attachments";
+
+        const imageCount = attachments.filter((attachment) =>
+            String(attachment.mime || "")
+                .toLowerCase()
+                .startsWith("image/"),
+        ).length;
+        if (imageCount > 1) {
+            attachmentBlock.classList.add("message-attachments-multi-image");
+        }
+
+        for (const attachment of attachments) {
+            const mime = String(attachment.mime || "").toLowerCase();
+
+            if (mime.startsWith("image/")) {
+                const imageLink = document.createElement("a");
+                imageLink.href = attachment.url;
+                imageLink.target = "_blank";
+                imageLink.rel = "noopener noreferrer";
+                imageLink.className = "message-attachment-image-link";
+                imageLink.addEventListener("click", (event) => {
+                    event.preventDefault();
+                    openImagePreview(
+                        attachment.url,
+                        attachment.name || "attachment",
+                    );
+                });
+
+                const img = document.createElement("img");
+                img.src = attachment.url;
+                img.alt = attachment.name || "attachment";
+                img.className = "message-attachment-image";
+                img.addEventListener(
+                    "load",
+                    () => {
+                        if (initialScrollToBottomPending) {
+                            scrollMessagesToBottom();
+                        }
+                    },
+                    { once: true },
+                );
+                imageLink.appendChild(img);
+                attachmentBlock.appendChild(imageLink);
+                continue;
+            }
+
+            if (mime.startsWith("video/")) {
+                const video = document.createElement("video");
+                video.controls = true;
+                video.src = attachment.url;
+                video.className = "message-attachment-video";
+                video.addEventListener(
+                    "loadedmetadata",
+                    () => {
+                        if (initialScrollToBottomPending) {
+                            scrollMessagesToBottom();
+                        }
+                    },
+                    { once: true },
+                );
+                attachmentBlock.appendChild(video);
+                continue;
+            }
+
+            const fileLink = document.createElement("a");
+            fileLink.href = attachment.url;
+            fileLink.target = "_blank";
+            fileLink.rel = "noopener noreferrer";
+            fileLink.className = "message-attachment-file";
+            fileLink.textContent = attachment.name || "Download attachment";
+            attachmentBlock.appendChild(fileLink);
+        }
+
+        li.appendChild(attachmentBlock);
+    };
+
+    const submitMessageReport = async (messageId) => {
+        const response = await fetch(
+            `/reports/message/${encodeURIComponent(messageId)}`,
+            {
+                method: "POST",
+                headers: { "X-Requested-With": "fetch" },
+                credentials: "same-origin",
+            },
+        );
+        const text = await response.text();
+        if (!response.ok) {
+            throw new Error(text || "Unable to report this message right now.");
+        }
+    };
+
+    const submitMessageDelete = async (messageId) => {
+        const response = await fetch(
+            `/messages/delete/${encodeURIComponent(messageId)}`,
+            {
+                method: "POST",
+                headers: { "X-Requested-With": "fetch" },
+                credentials: "same-origin",
+            },
+        );
+        const text = await response.text();
+        if (!response.ok) {
+            throw new Error(text || "Unable to delete this message right now.");
+        }
+    };
+
+    const createMessageActionMenu = (msg, onDelete = null) => {
+        const senderId = Number.parseInt(String(msg?.sender_id ?? "0"), 10);
+        const messageId = Number.parseInt(msg?.msg_id || "0", 10);
+        if (currentUserId <= 0 || senderId <= 0 || messageId <= 0) {
+            return null;
+        }
+        const isOwnMessage = senderId === currentUserId;
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "dropdown";
+
+        const popoverId = `options-${messageId}`;
+
+        const button = document.createElement("button");
+        button.setAttribute("popovertarget", popoverId);
+        button.textContent = "...";
+        wrapper.appendChild(button);
+
+        const menu = document.createElement("div");
+        menu.id = popoverId;
+        menu.setAttribute("popover", "");
+        menu.setAttribute("data-options-popover", "true");
+
+        const menuList = document.createElement("ul");
+        menuList.className = "dropdown-list";
+        if (isOwnMessage) {
+            const menuItem = document.createElement("li");
+            const deleteButton = document.createElement("button");
+            deleteButton.type = "button";
+            deleteButton.className = "button full-width";
+            deleteButton.textContent = "Delete";
+            deleteButton.addEventListener("click", async (event) => {
+                event.preventDefault();
+
+                deleteButton.disabled = true;
+                try {
+                    await submitMessageDelete(messageId);
+                    if (typeof menu.hidePopover === "function") {
+                        menu.hidePopover();
+                    }
+                    if (typeof onDelete === "function") {
+                        onDelete();
+                    }
+                } catch (error) {
+                    const message =
+                        error instanceof Error && error.message
+                            ? error.message
+                            : "Unable to delete this message right now.";
+                    alert(message);
+                } finally {
+                    deleteButton.disabled = false;
+                }
+            });
+
+            menuItem.appendChild(deleteButton);
+            menuList.appendChild(menuItem);
+        } else {
+            const menuItem = document.createElement("li");
+            const reportButton = document.createElement("button");
+            reportButton.type = "button";
+            reportButton.className = "button full-width";
+            reportButton.textContent = "Report";
+            reportButton.addEventListener("click", async (event) => {
+                event.preventDefault();
+
+                const confirmed = window.confirm(
+                    "Report this message to moderators?",
+                );
+                if (!confirmed) {
+                    return;
+                }
+
+                reportButton.disabled = true;
+                try {
+                    await submitMessageReport(messageId);
+                    alert("Message reported.");
+                    if (typeof menu.hidePopover === "function") {
+                        menu.hidePopover();
+                    }
+                } catch (error) {
+                    const message =
+                        error instanceof Error && error.message
+                            ? error.message
+                            : "Unable to report this message right now.";
+                    alert(message);
+                } finally {
+                    reportButton.disabled = false;
+                }
+            });
+
+            menuItem.appendChild(reportButton);
+            menuList.appendChild(menuItem);
+        }
+        menu.appendChild(menuList);
+        wrapper.appendChild(menu);
+        return wrapper;
+    };
+
+    const createMessageNode = (msg) => {
+        const li = document.createElement("li");
+        const who = msg.sender_username || msg.user || "user";
+        const senderProfilePhotoUrl =
+            String(msg.sender_profile_photo_url || "").trim() ||
+            "/public/avatar.webp";
+        const senderProfilePhotoStyle = String(
+            msg.sender_profile_photo_style || "",
+        ).trim();
+
+        const headerRow = document.createElement("div");
+        headerRow.className = "message-header-row";
+
+        const header = document.createElement("span");
+        header.className = "message-header";
+        const avatar = document.createElement("img");
+        avatar.className = "message-sender-avatar";
+        avatar.src = senderProfilePhotoUrl;
+        avatar.alt = `@${who} avatar`;
+        if (senderProfilePhotoStyle) {
+            avatar.style.cssText = senderProfilePhotoStyle;
+        }
+        header.appendChild(avatar);
+        header.appendChild(document.createTextNode(`${who}: `));
+        headerRow.appendChild(header);
+
+        if (msg.sent_at) {
+            const time = document.createElement("span");
+            time.setAttribute("data-utc-datetime", msg.sent_at);
+            time.setAttribute("data-time-display", "relative");
+            time.textContent = msg.sent_at;
+
+            header.appendChild(document.createTextNode("["));
+            header.appendChild(time);
+            header.appendChild(document.createTextNode("] "));
+        }
+
+        const actionMenu = createMessageActionMenu(msg, () => {
+            const deletedMessageId = Number.parseInt(msg?.msg_id || "0", 10);
+            if (deletedMessageId > 0) {
+                renderedMessageIds.delete(deletedMessageId);
+            }
+            li.remove();
+            refreshThreadList();
+        });
+        if (actionMenu) {
+            headerRow.appendChild(actionMenu);
+        }
+        li.appendChild(headerRow);
+
+        if (msg.text && msg.text.trim() !== "") {
+            appendMessageTextWithLinks(li, msg.text);
+        }
+
+        const firstLink = extractFirstLinkFromText(msg.text || "");
+        if (firstLink) {
+            const directImage = extractDirectImageLink(firstLink);
+            if (directImage) {
+                appendMessageLinkImage(li, directImage);
+            } else {
+                resolveFirstImageForLink(firstLink).then((resolvedImage) => {
+                    if (!resolvedImage) return;
+                    appendMessageLinkImage(li, resolvedImage);
+                });
+            }
+        }
+
+        appendMessageAttachments(li, msg);
+        return li;
+    };
+
+    const renderMessage = (msg, options = {}) => {
+        if (!msg || typeof msg !== "object") return null;
+        const { prepend = false } = options;
+        const msgId = Number.parseInt(msg.msg_id || "0", 10);
+        if (msgId > 0 && renderedMessageIds.has(msgId)) {
+            return null;
+        }
+
+        const li = createMessageNode(msg);
+        if (prepend) {
+            list.prepend(li);
+        } else {
+            list.appendChild(li);
+        }
+
+        if (msgId > 0) {
+            renderedMessageIds.add(msgId);
+            if (oldestLoadedMessageId === 0 || msgId < oldestLoadedMessageId) {
+                oldestLoadedMessageId = msgId;
+            }
+        }
+
+        if (typeof window.applyLocalDateTimes === "function") {
+            window.applyLocalDateTimes(li);
+        }
+
+        return li;
+    };
+
+    const appendHistoryChunk = (history, options = {}) => {
+        if (!Array.isArray(history) || history.length === 0) return 0;
+        const { prepend = false } = options;
+        let insertedCount = 0;
+
+        if (prepend) {
+            const previousHeight = list.scrollHeight;
+            const previousTop = list.scrollTop;
+
+            for (let index = history.length - 1; index >= 0; index -= 1) {
+                const rendered = renderMessage(history[index], {
+                    prepend: true,
+                });
+                if (rendered) {
+                    insertedCount += 1;
+                }
+            }
+
+            const heightDelta = list.scrollHeight - previousHeight;
+            list.scrollTop = previousTop + heightDelta;
+            return insertedCount;
+        }
+
+        for (const msg of history) {
+            const rendered = renderMessage(msg);
+            if (rendered) {
+                insertedCount += 1;
+            }
+        }
+
+        return insertedCount;
+    };
+
+    const scrollMessagesToBottom = () => {
+        list.scrollTop = list.scrollHeight;
+    };
+
+    const shouldAutoScrollToBottom = () => {
+        const remaining =
+            list.scrollHeight - (list.scrollTop + list.clientHeight);
+        return remaining < 140;
+    };
+
+    const scheduleInitialBottomScroll = () => {
+        if (!initialScrollToBottomPending) return;
+        scrollMessagesToBottom();
+        window.requestAnimationFrame(() => {
+            if (initialScrollToBottomPending) {
+                scrollMessagesToBottom();
+            }
+        });
+        window.setTimeout(() => {
+            if (initialScrollToBottomPending) {
+                scrollMessagesToBottom();
+            }
+        }, 180);
+    };
+
+    const historyBaseUrl = targetGroupId
+        ? `/v1/auth/messages/group/${encodeURIComponent(targetGroupId)}`
+        : targetUserPublicId
+          ? `/v1/auth/messages/${encodeURIComponent(targetUserPublicId)}`
+          : "";
+
+    const buildHistoryUrl = (beforeMsgId = 0) => {
+        if (!historyBaseUrl) return "";
+        const query = new URLSearchParams();
+        query.set("limit", String(MESSAGE_HISTORY_PAGE_SIZE));
+        if (Number.isInteger(beforeMsgId) && beforeMsgId > 0) {
+            query.set("before_msg_id", String(beforeMsgId));
+        }
+        return `${historyBaseUrl}?${query.toString()}`;
+    };
+
+    const loadHistoryPage = async ({
+        beforeMsgId = 0,
+        prepend = false,
+    } = {}) => {
+        if (!historyBaseUrl || historyLoading) return;
+        if (prepend && historyExhausted) return;
+
+        historyLoading = true;
+        try {
+            const response = await fetch(buildHistoryUrl(beforeMsgId), {
+                credentials: "same-origin",
+            });
+            if (!response.ok) {
+                throw new Error("history request failed");
+            }
+
+            const history = await response.json();
+            if (!Array.isArray(history) || history.length === 0) {
+                if (prepend || beforeMsgId > 0) {
+                    historyExhausted = true;
+                }
+                return;
+            }
+
+            appendHistoryChunk(history, { prepend });
+
+            if (!prepend) {
+                scheduleInitialBottomScroll();
+            }
+
+            const minMessageId = history
+                .map((msg) => Number.parseInt(msg?.msg_id || "0", 10))
+                .filter((id) => Number.isFinite(id) && id > 0)
+                .reduce(
+                    (minId, id) => (minId === 0 || id < minId ? id : minId),
+                    0,
+                );
+            if (
+                minMessageId > 0 &&
+                (oldestLoadedMessageId === 0 ||
+                    minMessageId < oldestLoadedMessageId)
+            ) {
+                oldestLoadedMessageId = minMessageId;
+            }
+
+            if (history.length < MESSAGE_HISTORY_PAGE_SIZE) {
+                historyExhausted = true;
+            }
+        } finally {
+            historyLoading = false;
+        }
+    };
+
+    const maybeLoadOlderHistory = () => {
+        if (historyExhausted || historyLoading) return;
+        if (oldestLoadedMessageId <= 0) return;
+        if (list.scrollTop > 80) return;
+
+        loadHistoryPage({
+            beforeMsgId: oldestLoadedMessageId,
+            prepend: true,
+        });
+    };
+
+    if (!targetUserPublicId && !targetGroupId) {
+        initialScrollToBottomPending = false;
+        const li = document.createElement("li");
+        li.textContent = "Open a direct conversation or group from the list.";
+        list.appendChild(li);
+        if (pendingMessengerShare) {
+            const pendingLi = document.createElement("li");
+            pendingLi.textContent =
+                "Shared post link is ready. Select a conversation, then press Send.";
+            list.appendChild(pendingLi);
+        }
+        if (sendButton) {
+            sendButton.disabled = true;
+        }
+        if (emojiToggleButton) {
+            emojiToggleButton.disabled = true;
+        }
+        input.disabled = true;
+        if (fileInput) {
+            fileInput.disabled = true;
+        }
+        closeEmojiPanel();
+    }
+
+    if (
+        (targetUserPublicId || targetGroupId) &&
+        pendingMessengerShare &&
+        input &&
+        !input.disabled
+    ) {
+        if (input.value.trim() === "") {
+            input.value = pendingMessengerShare;
+        } else if (!input.value.includes(pendingMessengerShare)) {
+            input.value =
+                `${input.value.trim()} ${pendingMessengerShare}`.trim();
+        }
+        clearPendingMessengerShare();
+        input.focus();
+    }
+
+    const proto = location.protocol === "https:" ? "wss" : "ws";
+    let ws = null;
+    if (targetGroupId) {
+        ws = new WebSocket(
+            `${proto}://${location.host}/ws/group/${encodeURIComponent(targetGroupId)}`,
+        );
+    } else if (targetUserPublicId) {
+        ws = new WebSocket(
+            `${proto}://${location.host}/ws/chat/${encodeURIComponent(targetUserPublicId)}`,
+        );
+    }
+
+    if (ws) {
+        loadHistoryPage()
+            .then(() => {
+                scheduleInitialBottomScroll();
+                window.setTimeout(() => {
+                    initialScrollToBottomPending = false;
+                }, 900);
+                list.addEventListener("scroll", maybeLoadOlderHistory);
+                if (
+                    !historyExhausted &&
+                    list.scrollHeight <= list.clientHeight + 48
+                ) {
+                    maybeLoadOlderHistory();
+                }
+            })
+            .catch(() => {
+                initialScrollToBottomPending = false;
+                const li = document.createElement("li");
+                li.textContent = "Unable to load chat history.";
+                list.appendChild(li);
+            });
+
+        ws.onmessage = (event) => {
+            const nearBottom = shouldAutoScrollToBottom();
+            const msg = JSON.parse(event.data);
+            const inserted = renderMessage(msg);
+            if (inserted && nearBottom) {
+                scrollMessagesToBottom();
+            }
+            refreshThreadList();
+        };
+
+        ws.onerror = () => {
+            initialScrollToBottomPending = false;
+            const li = document.createElement("li");
+            li.textContent = "Unable to open chat channel.";
+            list.appendChild(li);
+        };
+    } else {
+        initialScrollToBottomPending = false;
+    }
+
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const text = input.value.trim();
+        const hasFiles =
+            fileInput && fileInput.files && fileInput.files.length > 0;
+
+        if (hasFiles) {
+            if (!targetUserPublicId && !targetGroupId) return;
+            const formData = new FormData();
+            if (text) {
+                formData.append("text", text);
+            }
+            for (const file of fileInput.files) {
+                formData.append("file", file);
+            }
+
+            const uploadUrl = targetGroupId
+                ? `/v1/auth/messages/group/${encodeURIComponent(targetGroupId)}/attachments`
+                : `/v1/auth/messages/${encodeURIComponent(targetUserPublicId)}/attachments`;
+
+            const response = await fetch(uploadUrl, {
+                method: "POST",
+                body: formData,
+                credentials: "same-origin",
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                alert(errorText || "Upload failed");
+                return;
+            }
+
+            input.value = "";
+            fileInput.value = "";
+            return;
+        }
+
+        if (!ws || !text || ws.readyState !== WebSocket.OPEN) return;
+        ws.send(text);
+        input.value = "";
+    });
+
+    const addMemberToCurrentGroup = async (
+        memberId,
+        memberUsername,
+        options = {},
+    ) => {
+        if (!targetGroupId) return;
+
+        const { suppressReload = false, suppressAlerts = false } = options;
+        const response = await fetch(
+            `/v1/auth/messenger/groups/${encodeURIComponent(targetGroupId)}/members`,
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "same-origin",
+                body: JSON.stringify({ member_id: memberId }),
+            },
+        );
+
+        const text = await response.text();
+        if (!response.ok) {
+            if (!suppressAlerts) {
+                alert(text || "Failed to add user to group");
+            }
+            return {
+                ok: false,
+                message: text || "Failed to add user to group",
+            };
+        }
+
+        if (!suppressAlerts) {
+            alert(text || `@${memberUsername} added to group`);
+        }
+        if (!suppressReload) {
+            window.location.reload();
+        }
+        return {
+            ok: true,
+            message: text || `@${memberUsername} added to group`,
+        };
+    };
+
+    const bindAddMemberButtons = () => {
+        if (!groupAddList) return;
+        const submitButton = groupAddList.querySelector("#group-add-submit");
+        if (!submitButton) return;
+
+        submitButton.addEventListener("click", async () => {
+            const checks = groupAddList.querySelectorAll(
+                ".group-add-check:checked",
+            );
+            if (checks.length === 0) {
+                alert("Select at least one user to add.");
+                return;
+            }
+
+            submitButton.disabled = true;
+            const results = [];
+            for (const check of checks) {
+                const memberId = Number(check.dataset.userId);
+                const memberUsername = check.dataset.username || "";
+                if (!Number.isInteger(memberId) || memberId <= 0) continue;
+                results.push(
+                    await addMemberToCurrentGroup(memberId, memberUsername, {
+                        suppressReload: true,
+                        suppressAlerts: true,
+                    }),
+                );
+            }
+            submitButton.disabled = false;
+
+            const failed = results.filter((result) => result && !result.ok);
+            if (failed.length > 0) {
+                alert("Some users could not be added. Please try again.");
+                return;
+            }
+
+            alert("Users added to group");
+            window.location.reload();
+        });
+    };
+
+    const fetchGroupMemberIds = async () => {
+        if (!targetGroupId) return new Set();
+        const response = await fetch(
+            `/v1/auth/messenger/groups/${encodeURIComponent(targetGroupId)}/members`,
+            {
+                credentials: "same-origin",
+            },
+        );
+        if (!response.ok) {
+            throw new Error("Failed to load group members");
+        }
+        const ids = await response.json();
+        return new Set(ids.map((id) => Number(id)));
+    };
+
+    const hideGroupMembersFromList = async () => {
+        if (!groupAddList || !targetGroupId) return;
+        let memberIds;
+        try {
+            memberIds = await fetchGroupMemberIds();
+        } catch {
+            return;
+        }
+
+        const checks = groupAddList.querySelectorAll(".group-add-check");
+        for (const check of checks) {
+            const memberId = Number(check.dataset.userId);
+            if (memberIds.has(memberId)) {
+                check.closest("label")?.remove();
+            }
+        }
+    };
+
+    const buildThreadNode = (thread) => {
+        const wrapper = document.createElement("div");
+        wrapper.style.marginBottom = "0.5rem";
+
+        const link = document.createElement("a");
+        link.className = "button";
+        link.style.display = "block";
+
+        const title = document.createElement("strong");
+        const preview = document.createElement("div");
+        preview.textContent = thread.last_message || "No messages yet";
+
+        const row = document.createElement("div");
+        row.className = "horizontal flex";
+        const avatar = document.createElement("img");
+        avatar.className = "small avatar";
+        avatar.alt = thread.is_group ? "group" : "avatar";
+        avatar.src =
+            thread.profile_photo_url ||
+            (thread.is_group ? "/public/group.webp" : "/public/avatar.webp");
+        if (!thread.is_group) {
+            const threadPhotoStyle = String(
+                thread.profile_photo_style || "",
+            ).trim();
+            if (threadPhotoStyle) {
+                avatar.style.cssText = threadPhotoStyle;
+            }
+        }
+
+        if (thread.is_group) {
+            link.href = `/messenger?group=${encodeURIComponent(thread.chat_id)}`;
+            if (Number(targetGroupId) === Number(thread.chat_id)) {
+                link.classList.add("active");
+            }
+            title.textContent = `${thread.name}`;
+            row.appendChild(avatar);
+            row.appendChild(title);
+            link.appendChild(row);
+            link.appendChild(preview);
+            wrapper.appendChild(link);
+            return wrapper;
+        }
+
+        const userLookup = String(thread.user_lookup || "").trim();
+        link.href = userLookup
+            ? `/messenger?user=${encodeURIComponent(userLookup)}`
+            : "/messenger";
+        link.style.marginBottom = "0.25rem";
+        link.dataset.userId = String(thread.user_id);
+        link.dataset.publicId = String(thread.user_public_id);
+        link.dataset.userLookup = userLookup;
+        link.dataset.username = thread.name;
+        const threadLookup = String(thread.user_lookup || "").trim();
+        const threadPublicId = normalizeDirectUserId(thread.user_public_id);
+        if (
+            (targetUserLookup &&
+                threadLookup &&
+                targetUserLookup === threadLookup) ||
+            (!targetUserLookup &&
+                targetUserPublicId &&
+                threadPublicId &&
+                targetUserPublicId === threadPublicId)
+        ) {
+            link.classList.add("active");
+        }
+        title.textContent = `@${thread.name}`;
+        row.appendChild(avatar);
+        row.appendChild(title);
+        link.appendChild(row);
+        link.appendChild(preview);
+        wrapper.appendChild(link);
+
+        return wrapper;
+    };
+
+    const renderGroupAddList = (threads) => {
+        if (!groupAddList) return;
+        groupAddList.innerHTML = "";
+
+        if (!targetGroupId) {
+            groupAddList.style.display = "none";
+            return;
+        }
+
+        groupAddList.style.display = "";
+        const details = document.createElement("details");
+        details.className = "group-add-dropdown";
+
+        const summary = document.createElement("summary");
+        summary.className = "button";
+        summary.style.width = "100%";
+        summary.textContent = "Add users to current group";
+        details.appendChild(summary);
+
+        const list = document.createElement("div");
+        list.className = "vertical flex no padding";
+
+        for (const thread of threads || []) {
+            if (thread.is_group) continue;
+            const label = document.createElement("label");
+            label.className = "horizontal flex start no padding";
+            label.style.width = "100%";
+            label.style.gap = "0.5rem";
+            label.style.marginBottom = "0.25rem";
+
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.className = "group-add-check";
+            checkbox.dataset.userId = String(thread.user_id);
+            checkbox.dataset.username = thread.name;
+
+            const name = document.createElement("span");
+            name.textContent = `@${thread.name}`;
+
+            label.appendChild(checkbox);
+            label.appendChild(name);
+            list.appendChild(label);
+        }
+
+        details.appendChild(list);
+
+        const submitButton = document.createElement("button");
+        submitButton.type = "button";
+        submitButton.className = "button";
+        submitButton.id = "group-add-submit";
+        submitButton.style.width = "100%";
+        submitButton.style.marginTop = "0.5rem";
+        submitButton.textContent = "Add selected users";
+        details.appendChild(submitButton);
+        groupAddList.appendChild(details);
+    };
+
+    const renderThreadList = (threads) => {
+        if (!threadList) return;
+        threadList.innerHTML = "";
+
+        if (!threads || threads.length === 0) {
+            const p = document.createElement("p");
+            p.textContent = "No conversations yet.";
+            threadList.appendChild(p);
+            return;
+        }
+
+        for (const thread of threads) {
+            threadList.appendChild(buildThreadNode(thread));
+        }
+
+        renderGroupAddList(threads);
+        bindAddMemberButtons();
+        hideGroupMembersFromList();
+        updateConversationTitle();
+    };
+
+    const updateConversationTitle = () => {
+        if (!conversationTitle) return;
+
+        if (!targetUserPublicId && !targetGroupId) {
+            activeMessengerTab = "list";
+            conversationTitle.textContent = "";
+            applyMessengerTabVisibility();
+            applyConversationTabVisibility();
+            return;
+        }
+
+        activeMessengerTab = "conversation";
+        applyMessengerTabVisibility();
+        applyConversationTabVisibility();
+
+        const selected = threadList?.querySelector("a.button.active strong");
+        if (selected && selected.textContent) {
+            conversationTitle.textContent = selected.textContent;
+            return;
+        }
+
+        if (targetGroupId) {
+            conversationTitle.textContent = `Group ${targetGroupId}`;
+        } else if (targetUserLookup) {
+            const atIndex = targetUserLookup.indexOf("@");
+            const usernameLabel =
+                atIndex > 0
+                    ? targetUserLookup.slice(0, atIndex)
+                    : targetUserLookup;
+            conversationTitle.textContent = usernameLabel
+                ? `@${usernameLabel}`
+                : `User ${targetUserPublicId}`;
+        } else {
+            conversationTitle.textContent = `User ${targetUserPublicId}`;
+        }
+    };
+
+    const refreshThreadList = async () => {
+        const response = await fetch("/v1/auth/messenger/threads", {
+            credentials: "same-origin",
+        });
+        if (!response.ok) return;
+        const threads = await response.json();
+        renderThreadList(threads);
+    };
+
+    bindAddMemberButtons();
+    applyMessengerTabVisibility();
+    updateConversationTitle();
+    hideGroupMembersFromList();
+
+    const connectInbox = () => {
+        const inboxWs = new WebSocket(`${proto}://${location.host}/ws/inbox`);
+        inboxWs.onmessage = (event) => {
+            try {
+                const payload = JSON.parse(event.data);
+                if (payload?.kind && payload.kind !== "refresh_threads") {
+                    return;
+                }
+            } catch (_error) {}
+            refreshThreadList();
+        };
+        inboxWs.onclose = () => {
+            setTimeout(connectInbox, 1500);
+        };
+    };
+    connectInbox();
+
+    if (quickGroupButton) {
+        if (targetUserPublicId && !targetGroupId) {
+            const selectedConversation = targetUserLookup
+                ? document.querySelector(
+                      `a[data-user-lookup="${CSS.escape(targetUserLookup)}"]`,
+                  )
+                : document.querySelector(
+                      `a[data-public-id="${targetUserPublicId}"]`,
+                  );
+            const selectedUsername =
+                selectedConversation?.dataset.username || "";
+            quickGroupButton.style.display = "inline-block";
+            quickGroupButton.textContent = selectedUsername
+                ? `Create group with @${selectedUsername}`
+                : "Create group with this user";
+
+            quickGroupButton.addEventListener("click", async () => {
+                const memberId = Number(selectedConversation?.dataset.userId);
+                if (!Number.isInteger(memberId) || memberId <= 0) return;
+
+                const response = await fetch("/v1/auth/messenger/groups", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "same-origin",
+                    body: JSON.stringify({
+                        group_name: null,
+                        member_ids: [memberId],
+                    }),
+                });
+
+                if (!response.ok) {
+                    const text = await response.text();
+                    alert(text || "Group creation failed");
+                    return;
+                }
+
+                const data = await response.json();
+                window.location.href = data.url;
+            });
+        } else {
+            quickGroupButton.style.display = "none";
+        }
+    }
+
+    if (deleteGroupButton) {
+        if (targetGroupId) {
+            deleteGroupButton.style.display = "inline-block";
+            deleteGroupButton.addEventListener("click", async () => {
+                const confirmed = window.confirm(
+                    "Delete this group conversation? This action cannot be undone.",
+                );
+                if (!confirmed) return;
+
+                deleteGroupButton.disabled = true;
+                const response = await fetch(
+                    `/v1/auth/messenger/groups/${encodeURIComponent(targetGroupId)}`,
+                    {
+                        method: "DELETE",
+                        credentials: "same-origin",
+                    },
+                );
+                const text = await response.text();
+                deleteGroupButton.disabled = false;
+
+                if (!response.ok) {
+                    alert(text || "Failed to delete group");
+                    return;
+                }
+
+                window.location.href = "/messenger";
+            });
+        } else {
+            deleteGroupButton.style.display = "none";
+        }
+    }
+</script>
+{% endblock %}

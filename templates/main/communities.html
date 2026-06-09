@@ -1,0 +1,145 @@
+{% extends "base.html" %} {% block title %}Instavox | {{ title }}{% endblock %}
+{% block content %}
+<section class="content box">
+    <h1>Communities</h1>
+    {% if user_id > 0 %}
+    <button
+        id="toggle-community-create"
+        type="button"
+        class="small button"
+        aria-expanded="{% if create_message != "" %}true{% else %}false{% endif %}"
+        style="margin-bottom: 1rem"
+    >
+        Create community
+    </button>
+    <form
+        id="community-create-form"
+        action="/communities/create"
+        method="post"
+        class="profile-bio-form"
+        style="margin-top: 1rem; {% if create_message == "" %}display: none;{% endif %}"
+    >
+        <label for="community-create-name">Name</label>
+        <input
+            id="community-create-name"
+            name="name"
+            type="text"
+            maxlength="120"
+            placeholder="Community name"
+            required
+        />
+        <label for="community-create-slug">Slug (optional)</label>
+        <input
+            id="community-create-slug"
+            name="slug"
+            type="text"
+            maxlength="80"
+            placeholder="example-community"
+        />
+        <label for="community-create-description">Description (optional)</label>
+        <textarea
+            id="community-create-description"
+            name="description"
+            maxlength="1200"
+            rows="4"
+            placeholder="Describe this community"
+        ></textarea>
+        <button type="submit" class="small button">Create</button>
+    </form>
+    <script>
+        (() => {
+            const toggle = document.getElementById("toggle-community-create");
+            const form = document.getElementById("community-create-form");
+            if (!toggle || !form) return;
+
+            toggle.addEventListener("click", () => {
+                const isHidden = form.style.display === "none";
+                form.style.display = isHidden ? "block" : "none";
+                toggle.setAttribute("aria-expanded", isHidden ? "true" : "false");
+            });
+        })();
+    </script>
+    {% else %}
+    <a href="/login" class="small button">Login to create community</a>
+    {% endif %} {% if create_message != "" %}
+    <p
+        style="{% if create_success %}color: hsl(120, 45%, 34%){% else %}color: hsl(0, 62%, 42%){% endif %}"
+    >
+        {{ create_message }}
+    </p>
+    {% endif %}
+    <p>Browse the latest community pages.</p>
+</section>
+
+<section class="content box">
+    <h2>Joined Communities</h2>
+    {% if user_id == 0 %}
+    <p>Login to see the communities you joined.</p>
+    {% else if joined_communities.len() == 0 %}
+    <p>You have not joined any communities yet.</p>
+    {% else %} {% for community in joined_communities %}
+    <article class="friend-list-row">
+        <a href="/community/{{ community.slug }}" class="friend-list-link">
+            <img
+                src="{{ community.profile_photo_url }}"
+                alt="{{ community.name }} avatar"
+                class="post-author-avatar"
+                style="{{ community.profile_photo_style }}"
+            />
+            <div class="friend-list-meta">
+                <strong>{{ community.name }}</strong>
+                <small>/community/{{ community.slug }}</small>
+                <small>
+                    {{ community.member_count }} members | {{ community.post_count }}
+                    posts
+                </small>
+                {% if community.visibility == "private" %}
+                <small>Private community</small>
+                {% else %}
+                <small>Public community</small>
+                {% endif %} {% if community.owner_username != "" %}
+                <small>By @{{ community.owner_username }}</small>
+                {% endif %} {% if community.description != "" %}
+                <small>{{ community.description }}</small>
+                {% endif %}
+            </div>
+        </a>
+    </article>
+    {% endfor %} {% endif %}
+</section>
+
+<section class="content box">
+    <h2>Discover Communities</h2>
+    {% if communities.len() == 0 %}
+    <p>No community pages found.</p>
+    {% else %} {% for community in communities %}
+    <article class="friend-list-row">
+        <a href="/community/{{ community.slug }}" class="friend-list-link">
+            <img
+                src="{{ community.profile_photo_url }}"
+                alt="{{ community.name }} avatar"
+                class="post-author-avatar"
+                style="{{ community.profile_photo_style }}"
+            />
+            <div class="friend-list-meta">
+                <strong>{{ community.name }}</strong>
+                <small>/community/{{ community.slug }}</small>
+                <small>
+                    {{ community.member_count }} members | {{ community.post_count }}
+                    posts
+                </small>
+                {% if community.visibility == "private" %}
+                <small>Private community</small>
+                {% else %}
+                <small>Public community</small>
+                {% endif %} {% if community.owner_username != "" %}
+                <small>By @{{ community.owner_username }}</small>
+                {% endif %} {% if community.description != "" %}
+                <small>{{ community.description }}</small>
+                {% endif %}
+            </div>
+        </a>
+    </article>
+    {% endfor %} {% endif %}
+</section>
+{% endblock %}

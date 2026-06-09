@@ -1,0 +1,285 @@
+{% extends "base.html" %} {% block title %}Register{% endblock %} {% block
+content %}
+<div
+    class="alert alert-danger"
+    id="signup-error-alert"
+    role="alert"
+    style="display: none; color: hsl(0, 62%, 42%)"
+></div>
+
+<h1>{% if beta_invite_only_enabled %}Request register{% else %}Register{% endif %}</h1>
+{% if beta_invite_only_enabled %}
+<div class="box">
+    <p class="no margin">
+        Beta invite-only mode is active.
+    </p>
+    {% if beta_invite_message != "" %}
+    <p class="no margin" style="color: hsl(0, 62%, 42%)">
+        {{ beta_invite_message }}
+    </p>
+    {% endif %}
+</div>
+{% if beta_invite_token_valid %}
+<div class="box">
+    <h2 style="margin-top: 0">Complete invite access</h2>
+    <p class="no margin">
+        Your invite link is valid. Enter your email and password to continue to
+        profile completion.
+    </p>
+    <p
+        id="beta-invite-start-feedback"
+        class="no margin"
+        style="display: none"
+    ></p>
+    <form id="betaInviteStartForm" class="vertical flex no padding">
+        <input type="hidden" id="beta_invite_token" name="invite_token" value="{{ beta_invite_token }}" />
+        <label for="beta_invite_email">Email</label>
+        <input
+            type="email"
+            id="beta_invite_email"
+            name="email"
+            required
+            pattern="^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$"
+            title="Use an email ending with a domain suffix like .com, .ca, or .co"
+            autocomplete="email"
+            value="{{ beta_invite_approved_email }}"
+        />
+        <label for="beta_invite_password">Password</label>
+        <input
+            type="password"
+            id="beta_invite_password"
+            name="password"
+            required
+            minlength="10"
+            pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9\s])(?!.*\s{2})(?!\s)(?!.*\s$).{10,}"
+            title="At least 10 characters with uppercase, lowercase, number, and symbol. If using spaces, use only single spaces between words."
+            autocomplete="new-password"
+        />
+        <label for="beta_invite_confirm_password">Confirm Password</label>
+        <input
+            type="password"
+            id="beta_invite_confirm_password"
+            name="confirm_password"
+            required
+            minlength="10"
+            pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9\s])(?!.*\s{2})(?!\s)(?!.*\s$).{10,}"
+            title="Re-enter the same password"
+            autocomplete="new-password"
+        />
+        <button type="submit" class="main">Continue</button>
+    </form>
+</div>
+{% else %}
+<div class="box">
+    <h2 style="margin-top: 0">Request signup access</h2>
+    <p class="no margin">
+        Send a request and a moderator can review your email for beta access.
+    </p>
+    <p
+        id="beta-signup-request-feedback"
+        class="no margin"
+        style="display: none"
+    ></p>
+    <form
+        id="betaSignupRequestForm"
+        class="vertical flex no padding"
+        autocomplete="on"
+    >
+        <label for="beta_request_email">Email</label>
+        <input
+            type="email"
+            id="beta_request_email"
+            name="email"
+            required
+            pattern="^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$"
+            title="Use an email ending with a domain suffix like .com, .ca, or .co"
+            autocomplete="email"
+        />
+        <button type="submit" class="small button">Request invite</button>
+    </form>
+</div>
+{% endif %}
+<div class="content box" style="margin-top: 0.75rem">
+    <p class="no margin">Already have beta access?</p>
+    <a href="/login" class="button">Login</a>
+</div>
+{% else %}
+<form id="signupForm">
+    <input type="hidden" name="invite_token" id="invite_token" value="{{ beta_invite_token }}" />
+    <label for="first_name">First Name</label>
+    <input
+        type="text"
+        name="first_name"
+        id="first_name"
+        autocomplete="na"
+        required
+    />
+    <label for="last_name">Last Name</label>
+    <input type="text" name="last_name" id="last_name"
+        required
+    />
+    <label for="username">Username</label>
+    <input type="text" name="username" id="username" required minlength="3"
+        autocomplete="username"
+    />
+    <label for="preferred_username">Preferred Username (for ActivityPub handle | Optional)</label>
+    <input
+        type="text"
+        name="preferred_username"
+        id="preferred_username"
+        minlength="3"
+        autocomplete="nickname"
+    />
+    <p id="ap-handle-preview" class="no margin">ActivityPub handle: @username@instance</p>
+    <p id="ap-actor-preview" class="no margin">Actor id: http://instance/ap/users/username</p>
+    <label for="birthday">Birthday</label>
+    <input type="date" name="birthday" id="birthday" required
+    />
+    <label for="gender">Gender</label>
+    <select name="gender" id="gender" required>
+        <option value="">-- Select --</option>
+        <option value="male">Male</option>
+        <option value="female">Female</option>
+        <option value="other">Other</option>
+    </select>
+    <label for="email">Email</label>
+    <input type="email" name="email" id="email" required
+        pattern="^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$"
+        title="Use an email ending with a domain suffix like .com, .ca, or .co"
+        autocomplete="email"
+    />
+    <label for="confirm_email">Confirm Email</label>
+    <input
+        type="email"
+        name="confirm_email"
+        id="confirm_email"
+        required
+        pattern="^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$"
+        title="Re-enter the same email address"
+        autocomplete="email"
+    />
+    <label for="password">Password</label>
+    <input
+        type="password"
+        name="password"
+        id="password"
+        required
+        minlength="10"
+        pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9\s])(?!.*\s{2})(?!\s)(?!.*\s$).{10,}"
+        title="At least 10 characters with uppercase, lowercase, number, and symbol. If using spaces, use only single spaces between words."
+    />
+    <label for="confirm_password">Confirm Password</label>
+    <input
+        type="password"
+        name="confirm_password"
+        id="confirm_password"
+        required
+        minlength="10"
+        pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9\s])(?!.*\s{2})(?!\s)(?!.*\s$).{10,}"
+        title="Re-enter the same password"
+        autocomplete="new-password"
+    />
+    <div class="box">
+        <label for="accepted_terms">
+            <input
+                type="checkbox"
+                name="accepted_terms"
+                id="accepted_terms"
+                value="true"
+                required
+            />
+            I agree to the <a href="/terms" target="_blank">Terms and Conditions</a>.
+        </label>
+        <label for="accepted_privacy">
+            <input
+                type="checkbox"
+                name="accepted_privacy"
+                id="accepted_privacy"
+                value="true"
+                required
+            />
+            I agree to the <a href="/privacy-policy" target="_blank">Privacy Policy</a>.
+        </label>
+    </div>
+    <button
+        type="submit"
+        /*onclick=RegisterUser()*/
+        class="main"
+    >
+        Register
+    </button>
+</form>
+<div class="content box" style="margin-top: 0.75rem">
+    <p class="no margin">Already have an account?</p>
+    <a href="/login" class="button">Login</a>
+</div>
+{% endif %}
+<script>
+    (() => {
+        const usernameInput = document.getElementById("username");
+        const preferredUsernameInput = document.getElementById("preferred_username");
+        const handlePreview = document.getElementById("ap-handle-preview");
+        const actorPreview = document.getElementById("ap-actor-preview");
+        if (!usernameInput || !handlePreview || !actorPreview) return;
+
+        const updatePreview = () => {
+            const fallbackUsername = (usernameInput.value || "").trim();
+            const preferredUsername = (preferredUsernameInput?.value || "").trim();
+            const actorUsername = preferredUsername || fallbackUsername || "username";
+            const host = window.location.host || "instance";
+            const scheme = window.location.protocol === "https:" ? "https" : "http";
+            handlePreview.textContent = `ActivityPub handle: @${actorUsername}@${host}`;
+            actorPreview.textContent = `Actor id: ${scheme}://${host}/ap/users/${encodeURIComponent(actorUsername)}`;
+        };
+
+        usernameInput.addEventListener("input", updatePreview);
+        preferredUsernameInput?.addEventListener("input", updatePreview);
+        updatePreview();
+    })();
+
+    (() => {
+        const emailInput = document.getElementById("email");
+        const confirmEmailInput = document.getElementById("confirm_email");
+        const passwordInput = document.getElementById("password");
+        const confirmPasswordInput = document.getElementById("confirm_password");
+        if (
+            !emailInput ||
+            !confirmEmailInput ||
+            !passwordInput ||
+            !confirmPasswordInput
+        ) {
+            return;
+        }
+
+        const validateConfirmEmail = () => {
+            const email = (emailInput.value || "").trim().toLowerCase();
+            const confirmEmail = (confirmEmailInput.value || "")
+                .trim()
+                .toLowerCase();
+            if (confirmEmail !== "" && email !== confirmEmail) {
+                confirmEmailInput.setCustomValidity("Email addresses must match");
+            } else {
+                confirmEmailInput.setCustomValidity("");
+            }
+        };
+
+        const validateConfirmPassword = () => {
+            if (
+                confirmPasswordInput.value !== "" &&
+                passwordInput.value !== confirmPasswordInput.value
+            ) {
+                confirmPasswordInput.setCustomValidity("Passwords must match");
+            } else {
+                confirmPasswordInput.setCustomValidity("");
+            }
+        };
+
+        emailInput.addEventListener("input", validateConfirmEmail);
+        confirmEmailInput.addEventListener("input", validateConfirmEmail);
+        passwordInput.addEventListener("input", validateConfirmPassword);
+        confirmPasswordInput.addEventListener("input", validateConfirmPassword);
+        validateConfirmEmail();
+        validateConfirmPassword();
+    })();
+</script>
+{% endblock %}

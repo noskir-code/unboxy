@@ -1,0 +1,52 @@
+<div>
+    {% if thread.is_group %}
+    <a
+        href="/messenger?group={{ thread.chat_id }}"
+        class="no padding margin vertical flex button{% if selected_group_id == thread.chat_id %} active{% endif %}"
+    >
+        <div class="horizontal flex start no padding">
+            <img
+                src="{{ thread.profile_photo_url }}"
+                alt="group"
+                class="small avatar"
+                style="{{ thread.profile_photo_style }}"
+            />
+            <div class="vertical flex no padding">
+                <p class="no margin">{{ thread.name }}</p>
+                {% if thread.last_message == "" %}
+                <p class="no margin">No messages yet</p>
+                {% else %}
+                <p class="no margin">{{ thread.last_message }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </a>
+    {% else %}
+    <a
+        href="/messenger?user={{ thread.user_lookup }}"
+        class="message-user vertical flex button{% if selected_user_public_id == thread.user_public_id %} active{% endif %}"
+        data-user-id="{{ thread.user_id }}"
+        data-public-id="{{ thread.user_public_id }}"
+        data-user-lookup="{{ thread.user_lookup }}"
+        data-username="{{ thread.name }}"
+        style="display: block; margin-bottom: 0.25rem"
+    >
+        <div class="horizontal flex start no padding">
+            <img
+                src="{{ thread.profile_photo_url }}"
+                alt="avatar"
+                class="small avatar"
+                style="{{ thread.profile_photo_style }}"
+            />
+            <div class="vertical flex no padding">
+                <p class="no margin">{{ thread.name }}</p>
+                {% if thread.last_message == "" %}
+                <p class="no margin">No messages yet</p>
+                {% else %}
+                <p class="no margin">{{ thread.last_message }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </a>
+    {% endif %}
+</div>

@@ -1,0 +1,45 @@
+{% if user_card_wrap_row %}
+<div class="friend-list-row">
+    {% endif %}
+    <a
+        href="/user/{{ user_card_username }}@{{ local_profile_domain }}"
+        class="{{ user_card_class }}"
+    >
+        <img
+            src="{{ user_card_profile_photo_url }}"
+            alt="@{{ user_card_username }} avatar"
+            class="post-author-avatar"
+            style="{{ user_card_profile_photo_style }}"
+        />
+        <div class="friend-list-meta">
+            <strong>@{{ user_card_username }}</strong>
+            {% if user_card_show_mutual %}
+            <small>
+                {{ user_card_mutual_friends_count }} mutual friend{% if
+                user_card_mutual_plural %}s{% endif %}
+            </small>
+            {% endif %}
+        </div>
+    </a>
+    {% if user_card_action_type == "add" %}
+    <form action="/friends/request/{{ user_card_action_id }}" method="post">
+        <i class="bi bi-person-plus-fill"></i>
+        <button type="submit" class="button">Add Friend</button>
+    </form>
+    {% else if user_card_action_type == "remove" %}
+    <form action="/friends/remove/{{ user_card_action_id }}" method="post">
+        <button type="submit" class="button">
+            <i class="bi bi-person-dash-fill"></i>
+            Remove Friend
+        </button>
+    </form>
+    {% else if user_card_action_type == "incoming" %}
+    <form action="/friends/accept/{{ user_card_action_id }}" method="post">
+        <button type="submit" class="button">Accept</button>
+    </form>
+    <form action="/friends/reject/{{ user_card_action_id }}" method="post">
+        <button type="submit" class="button">Reject</button>
+    </form>
+    {% endif %} {% if user_card_wrap_row %}
+</div>
+{% endif %}

@@ -1,0 +1,75 @@
+{% extends "base.html" %} {% block title %}{{ title }}{% endblock %} {% block
+content %}
+<section class="content box">
+    <h1>Search</h1>
+    {% if searched %}
+    <p>Results for "<strong>{{ search_term }}</strong>"</p>
+    {% else %}
+    <p>Use the search bar in the navigation to find users and posts.</p>
+    {% endif %}
+</section>
+
+{% if searched %}
+<section class="content box">
+    <h2>Users</h2>
+    {% if users.len() == 0 %}
+    <p>No users found.</p>
+    {% else %} {% for user in users %}
+    <div class="friend-list-row">
+        <a
+            href="{{ user.profile_url }}"
+            class="friend-list-link"
+            {% if user.is_remote %}target="_blank" rel="noopener noreferrer"{% endif %}
+        >
+            <img
+                src="{{ user.profile_photo_url }}"
+                alt="{{ user.handle }} avatar"
+                class="post-author-avatar"
+                style="{{ user.profile_photo_style }}"
+            />
+            <div class="friend-list-meta">
+                <strong>{{ user.handle }}</strong>
+                {% if user.preferred_username != "" %}
+                <small>{{ user.preferred_username }}</small>
+                {% endif %}
+            </div>
+        </a>
+    </div>
+    {% endfor %} {% endif %}
+</section>
+
+<section class="content box">
+    <h2>Posts</h2>
+    {% if posts.len() == 0 %}
+    <p>No posts found.</p>
+    {% else %} {% for post in posts %}
+    <article class="post-card">
+        <div class="post-card-header">
+            <a
+                href="{{ post.author_profile_url }}"
+                class="post-author-link"
+                {% if post.is_remote %}target="_blank" rel="noopener noreferrer"{% endif %}
+            >
+                <img
+                    src="{{ post.author_profile_photo_url }}"
+                    alt="{{ post.author_handle }} avatar"
+                    class="post-author-avatar"
+                    style="{{ post.author_profile_photo_style }}"
+                />
+                <strong>{{ post.author_handle }}</strong>
+            </a>
+            <small class="post-date" data-utc-datetime="{{ post.created_at }}"
+                >{{ post.created_at }}</small
+            >
+        </div>
+        <p class="post-body">{{ post.body_preview }}</p>
+        <a
+            href="{{ post.post_url }}"
+            class="small button"
+            {% if post.is_remote %}target="_blank" rel="noopener noreferrer"{% endif %}
+            >View post and comments</a
+        >
+    </article>
+    {% endfor %} {% endif %}
+</section>
+{% endif %} {% endblock %}

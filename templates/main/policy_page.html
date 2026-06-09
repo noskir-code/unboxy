@@ -1,0 +1,11 @@
+{% extends "base.html" %} {% block title %}{{ title }}{% endblock %} {% block
+content %}
+<section class="content box">
+    <h1>{{ page_heading }}</h1>
+    <p>{{ page_content }}</p>
+    <div class="horizontal flex start no padding">
+        <a href="/register" class="button">Back to register</a>
+        <a href="/login" class="button">Back to login</a>
+    </div>
+</section>
+{% endblock %}

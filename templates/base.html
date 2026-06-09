@@ -1,0 +1,2786 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>{% block title %}Instavox{% endblock %}</title>
+        <link rel="icon" href="/public/favicon.ico" />
+        {% block stylesheets %}
+        <link rel="stylesheet" href="/assets/style.css" />
+        <link rel="stylesheet" href="/assets/mobile.css" />
+        <link rel="stylesheet" href="/assets/bootstrap-icons.css" />
+        {% endblock %}
+    </head>
+    <body
+        data-session-public-id="{{ id }}"
+        data-session-username="{{ username }}"
+        data-session-profile-photo="{{ profile_photo_url }}"
+        data-session-profile-photo-style="{{ profile_photo_style }}"
+        data-local-profile-domain="{{ local_profile_domain }}"
+    >
+        <header>
+            <p class="flex title">Instavox</p>
+            <a href="/" class="title">
+                <img src="/public/instavox.ico" alt="Logo" />
+            </a>
+            <div class="flex">
+                {% if username == "" %}
+                <a href="/login" class="button">Login</a>
+                <a href="/register" class="main button" id="guest-register-link"
+                    >Register</a
+                >
+                <a
+                    href="/register"
+                    class="main button"
+                    id="guest-request-register-link"
+                    style="display: none"
+                    >Request register</a
+                >
+                {% else %}
+                <div class="full width">
+                    <div class="dropdown">
+                        <button popovertarget="notifications">
+                            <i class="bi bi-bell-fill"></i> {% if
+                            unread_notifications_count > 0 %}
+                            <span class="notification-badge"
+                                >{{ unread_notifications_count }}</span
+                            >
+                            {% endif %}
+                        </button>
+                        <div id="notifications" popover>
+                            {% if unread_notifications_count > 0 %}
+                            <div class="notification-menu-actions">
+                                <form
+                                    action="/notifications/read-all"
+                                    method="post"
+                                    class="notification-read-all-form"
+                                >
+                                    <button type="submit" class="small button">
+                                        Mark all read
+                                    </button>
+                                </form>
+                                {% if notifications.len() > 0 %}
+                                <form
+                                    action="/notifications/delete-all"
+                                    method="post"
+                                    class="notification-delete-all-form"
+                                >
+                                    <button type="submit" class="small button">
+                                        Delete all
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                            {% else %} {% if notifications.len() > 0 %}
+                            <div class="notification-menu-actions">
+                                <form
+                                    action="/notifications/delete-all"
+                                    method="post"
+                                    class="notification-delete-all-form"
+                                >
+                                    <button type="submit" class="small button">
+                                        Delete all
+                                    </button>
+                                </form>
+                            </div>
+                            {% endif %} {% endif %}
+                            <ul class="dropdown-list notification-list">
+                                {% if notifications.len() == 0 %}
+                                <li class="no margin notification-empty">
+                                    No notifications.
+                                </li>
+                                {% else %} {% for notification in notifications
+                                %}
+                                <li
+                                    class="notification-item box {% if notification.is_unread %}unread{% endif %}"
+                                    data-notification-id="{{ notification.notification_id }}"
+                                    data-link-url="{{ notification.link_url }}"
+                                    data-message-count="{{ notification.message_count }}"
+                                >
+                                    <a
+                                        href="{{ notification.link_url }}"
+                                        class="notification-item-link"
+                                    >
+                                        <strong
+                                            >{{ notification.title }}</strong
+                                        >
+                                        {% if notification.body != "" %}
+                                        <p>{{ notification.body }}</p>
+                                        {% endif %} {% if
+                                        notification.message_count > 1 %}
+                                        <small
+                                            class="notification-message-count"
+                                            >{{ notification.message_count }}
+                                            new messages</small
+                                        >
+                                        {% endif %}
+                                        <small
+                                            data-utc-datetime="{{ notification.created_at }}"
+                                            data-time-display="relative"
+                                            >{{ notification.created_at
+                                            }}</small
+                                        >
+                                    </a>
+                                    <form
+                                        action="/notifications/delete/{{ notification.notification_id }}"
+                                        method="post"
+                                        class="notification-item-actions"
+                                    >
+                                        <button
+                                            type="submit"
+                                            class="small button"
+                                        >
+                                            <i class="bi bi-trash-fill"> </i
+                                            >Delete
+                                        </button>
+                                    </form>
+                                </li>
+                                {% endfor %} {% endif %}
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="group">
+                        <a
+                            class="button left"
+                            href="/user/{{ username }}@{{ local_profile_domain }}"
+                        >
+                            <p>{{ username }}</p>
+                            <img
+                                src="{{ profile_photo_url }}"
+                                alt="avatar"
+                                class="small avatar"
+                                style="{{ profile_photo_style }}"
+                            />
+                        </a>
+                        <button popovertarget="user" class="button right">
+                            ...
+                        </button>
+                        <div id="user" popover>
+                            <div class="dropdown-list">
+                                <li>Connected as {{ username }}</li>
+                                <a
+                                    href="/user/{{ username }}@{{ local_profile_domain }}"
+                                    class="button"
+                                    >Profile</a
+                                >
+                                <a href="/settings" class="button"
+                                    ><i class="bi bi-gear-fill"> </i>Settings</a
+                                >
+                                {% if is_moderator %}
+                                <a href="/moderator" class="button"
+                                    >Moderator</a
+                                >
+                                {% endif %}
+                                <form action="/logout" method="post">
+                                    <button type="submit">
+                                        <i class="bi bi-box-arrow-right"> </i
+                                        >Logout
+                                    </button>
+                                </form>
+                                <div>
+                                    <input
+                                        type="checkbox"
+                                        name="dark-mode"
+                                        id="dark-mode-toggle"
+                                    />
+                                    <label for="dark-mode">Dark mode</label>
+                                </div>
+                                <p>BETA - 0.1.29</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </header>
+        <!--<header style="background-color: hsla(0, 0%, 0%, 0%); display: none;">
+
+            <div class="vertical flex pad">
+                <input type="text" placeholder="search" id="search"></input>
+            </div>
+            <div class="grow vertical flex">
+
+            </div>
+            </header>-->
+
+        <div class="main">
+            <nav>
+                <form class="flex" action="/search" method="get">
+                    <input
+                        type="search"
+                        name="search"
+                        id="nav-search-input"
+                        placeholder="search..."
+                        class=""
+                    />
+                    <button type="submit"><i class="bi bi-search"></i></button>
+                </form>
+                <br />
+                {% if title == "Feeds" %}
+                <a href="/" class="nav-link-main">Feeds</a>
+                {% else %}
+                <a href="/" class="nav-link">Feeds</a>
+                {% endif %} {% if title == "Community" %}
+                <a href="/communities" class="nav-link-main">Communities</a>
+                {% else %}
+                <a href="/communities" class="nav-link">Communities</a>
+                {% endif %} {# % if title == "Posts" %}
+                <a href="/" class="nav-link-main">Posts</a>
+                {% else %}
+                <a href="/" class="nav-link">Posts</a>
+                {% endif %} {% if title == "Images" %}
+                <a href="/" class="nav-link-main">Images</a>
+                {% else %}
+                <a href="/" class="nav-link">Images</a>
+                {% endif % #} {# % if title == "Videos" %}
+                <a href="/" class="nav-link-main">Videos</a>
+                {% else %}
+                <a href="/" class="nav-link">Videos</a>
+                {% endif %} {% if title == "Shorts" %}
+                <a href="/" class="nav-link-main">Shorts</a>
+                {% else %}
+                <a href="/" class="nav-link">Shorts</a>
+                <br />
+                {% endif % #} {% if title == "Friends" %}
+                <a href="/friends" class="nav-link-main">Friends</a>
+                {% else %}
+                <a href="/friends" class="nav-link">Friends</a>
+                {% endif %} {% if title == "Messenger" %}
+                <a href="/messenger" class="nav-link-main"
+                    ><i class="bi bi-chat-dots-fill"> </i>Messenger</a
+                >
+                {% else %}
+                <a href="/messenger" class="nav-link"
+                    ><i class="bi bi-chat-dots-fill"> </i>Messenger</a
+                >
+                {% endif %}
+            </nav>
+            <div class="vertical-grid main-center">
+                {% block content %} {% endblock %}
+            </div>
+        </div>
+        <div id="post-image-preview-modal" class="post-image-preview-modal">
+            <button
+                id="post-image-preview-close"
+                type="button"
+                class="button round bi bi-x-circle"
+                aria-label="Close preview"
+            ></button>
+            <a
+                id="post-image-preview-edit-profile-photo"
+                href="/settings#profile-photo-settings"
+                class="button"
+                style="display: none"
+                >Edit photo</a
+            >
+            <button
+                id="post-image-preview-prev"
+                type="button"
+                class="post-image-preview-nav prev"
+                aria-label="Previous image"
+                style="display: none"
+            >
+                <i class="bi bi-chevron-left"></i>
+            </button>
+            <button
+                id="post-image-preview-next"
+                type="button"
+                class="post-image-preview-nav next"
+                aria-label="Next image"
+                style="display: none"
+            >
+                <i class="bi bi-chevron-right"></i>
+            </button>
+            <img
+                id="post-image-preview-full"
+                src=""
+                alt="post image preview"
+                class="post-image-preview-full"
+            />
+            <div
+                id="post-image-preview-dots"
+                class="post-image-preview-dots"
+                style="display: none"
+            ></div>
+        </div>
+        <script>
+            (() => {
+                const input = document.getElementById("nav-search-input");
+                if (!input) return;
+                const currentValue = (input.value || "").trim();
+                if (currentValue) return;
+
+                const query = new URLSearchParams(window.location.search);
+                const searchValue = (query.get("search") || "").trim();
+                if (searchValue) {
+                    input.value = searchValue;
+                }
+            })();
+        </script>
+        <script>
+            (() => {
+                const guestRegisterLink = document.getElementById(
+                    "guest-register-link",
+                );
+                const guestRequestLink = document.getElementById(
+                    "guest-request-register-link",
+                );
+                const loginSignupLink =
+                    document.getElementById("login-signup-link");
+
+                if (
+                    !guestRegisterLink &&
+                    !guestRequestLink &&
+                    !loginSignupLink
+                ) {
+                    return;
+                }
+
+                const applyMode = (betaInviteOnlyEnabled) => {
+                    const requestMode = Boolean(betaInviteOnlyEnabled);
+                    if (guestRegisterLink) {
+                        guestRegisterLink.style.display = requestMode
+                            ? "none"
+                            : "";
+                    }
+                    if (guestRequestLink) {
+                        guestRequestLink.style.display = requestMode
+                            ? ""
+                            : "none";
+                    }
+                    if (loginSignupLink) {
+                        loginSignupLink.textContent = requestMode
+                            ? "Request register"
+                            : "Sign up";
+                    }
+                };
+
+                fetch("/v1/auth/beta-mode", {
+                    method: "GET",
+                    credentials: "same-origin",
+                })
+                    .then((response) => {
+                        if (!response.ok) return null;
+                        return response.json();
+                    })
+                    .then((payload) => {
+                        applyMode(Boolean(payload?.beta_invite_only_enabled));
+                    })
+                    .catch(() => {
+                        // keep default labels when mode cannot be fetched
+                    });
+            })();
+        </script>
+        <script>
+            (() => {
+                const modal = document.getElementById(
+                    "post-image-preview-modal",
+                );
+                const closeButton = document.getElementById(
+                    "post-image-preview-close",
+                );
+                const editProfilePhotoButton = document.getElementById(
+                    "post-image-preview-edit-profile-photo",
+                );
+                const prevButton = document.getElementById(
+                    "post-image-preview-prev",
+                );
+                const nextButton = document.getElementById(
+                    "post-image-preview-next",
+                );
+                const dots = document.getElementById("post-image-preview-dots");
+                const image = document.getElementById(
+                    "post-image-preview-full",
+                );
+                if (
+                    !modal ||
+                    !closeButton ||
+                    !editProfilePhotoButton ||
+                    !prevButton ||
+                    !nextButton ||
+                    !dots ||
+                    !image
+                ) {
+                    return;
+                }
+
+                let galleryItems = [];
+                let currentIndex = 0;
+
+                const normalizeItem = (src, altText) => {
+                    const normalizedSrc = String(src || "").trim();
+                    if (!normalizedSrc) return null;
+                    const normalizedAlt = String(altText || "").trim();
+                    return {
+                        src: normalizedSrc,
+                        alt: normalizedAlt || "post image preview",
+                    };
+                };
+
+                const isOpen = () => modal.style.display === "flex";
+
+                const setModalOpen = (open) => {
+                    modal.style.display = open ? "flex" : "none";
+                    document.body.style.overflow = open ? "hidden" : "";
+                };
+
+                const syncProfilePhotoEditAction = (trigger) => {
+                    const editUrl = String(
+                        trigger?.getAttribute("data-profile-photo-edit-url") ||
+                            "",
+                    ).trim();
+                    const isOwnerProfilePhoto =
+                        String(
+                            trigger?.getAttribute("data-profile-photo-owner") ||
+                                "",
+                        ).trim() === "true";
+
+                    if (isOwnerProfilePhoto && editUrl) {
+                        editProfilePhotoButton.href = editUrl;
+                        editProfilePhotoButton.style.display = "";
+                        return;
+                    }
+
+                    editProfilePhotoButton.href =
+                        "/settings#profile-photo-settings";
+                    editProfilePhotoButton.style.display = "none";
+                };
+
+                const syncDotState = () => {
+                    const dotButtons = dots.querySelectorAll(
+                        "[data-post-image-preview-dot]",
+                    );
+                    dotButtons.forEach((dotButton) => {
+                        const dotIndex = Number.parseInt(
+                            dotButton.getAttribute(
+                                "data-post-image-preview-dot",
+                            ) || "0",
+                            10,
+                        );
+                        const isActive = dotIndex === currentIndex;
+                        dotButton.classList.toggle("active", isActive);
+                        dotButton.setAttribute(
+                            "aria-current",
+                            isActive ? "true" : "false",
+                        );
+                    });
+                };
+
+                const renderDots = () => {
+                    dots.innerHTML = "";
+                    if (galleryItems.length <= 1) {
+                        dots.style.display = "none";
+                        return;
+                    }
+
+                    const fragment = document.createDocumentFragment();
+                    for (
+                        let dotIndex = 0;
+                        dotIndex < galleryItems.length;
+                        dotIndex += 1
+                    ) {
+                        const dotButton = document.createElement("button");
+                        dotButton.type = "button";
+                        dotButton.className = "post-image-preview-dot";
+                        dotButton.setAttribute(
+                            "data-post-image-preview-dot",
+                            String(dotIndex),
+                        );
+                        dotButton.setAttribute(
+                            "aria-label",
+                            `Go to image ${dotIndex + 1}`,
+                        );
+                        fragment.appendChild(dotButton);
+                    }
+                    dots.appendChild(fragment);
+                    dots.style.display = "flex";
+                    syncDotState();
+                };
+
+                const renderCurrentImage = () => {
+                    if (galleryItems.length === 0) return;
+                    const item = galleryItems[currentIndex];
+                    if (!item) return;
+
+                    image.src = item.src;
+                    image.alt = item.alt;
+
+                    const showNavigation = galleryItems.length > 1;
+                    prevButton.style.display = showNavigation ? "" : "none";
+                    nextButton.style.display = showNavigation ? "" : "none";
+                    prevButton.disabled = !showNavigation || currentIndex <= 0;
+                    nextButton.disabled =
+                        !showNavigation ||
+                        currentIndex >= galleryItems.length - 1;
+                    syncDotState();
+                };
+
+                const setCurrentIndex = (nextIndex) => {
+                    if (galleryItems.length === 0) return;
+                    const normalized = Number.parseInt(
+                        String(nextIndex || "0"),
+                        10,
+                    );
+                    if (!Number.isFinite(normalized)) return;
+                    currentIndex = Math.max(
+                        0,
+                        Math.min(galleryItems.length - 1, normalized),
+                    );
+                    renderCurrentImage();
+                };
+
+                const openPreview = (items, startIndex = 0, trigger = null) => {
+                    if (!Array.isArray(items) || items.length === 0) return;
+                    galleryItems = items;
+                    currentIndex = 0;
+                    renderDots();
+                    setCurrentIndex(startIndex);
+                    syncProfilePhotoEditAction(trigger);
+                    setModalOpen(true);
+                };
+
+                const closePreview = () => {
+                    setModalOpen(false);
+                    image.src = "";
+                    image.alt = "post image preview";
+                    galleryItems = [];
+                    currentIndex = 0;
+                    dots.innerHTML = "";
+                    dots.style.display = "none";
+                    prevButton.style.display = "none";
+                    nextButton.style.display = "none";
+                    syncProfilePhotoEditAction(null);
+                };
+
+                const buildGalleryFromTrigger = (trigger) => {
+                    if (!trigger || typeof trigger.closest !== "function") {
+                        return null;
+                    }
+
+                    const grid = trigger.closest(".post-image-grid");
+                    if (!grid) return null;
+
+                    const anchors = Array.from(
+                        grid.querySelectorAll(
+                            ":scope > a[data-post-image-preview-src]",
+                        ),
+                    );
+                    if (anchors.length <= 1) return null;
+
+                    const items = anchors
+                        .map((anchor) =>
+                            normalizeItem(
+                                anchor.getAttribute(
+                                    "data-post-image-preview-src",
+                                ) || "",
+                                anchor.getAttribute(
+                                    "data-post-image-preview-alt",
+                                ) || "post image preview",
+                            ),
+                        )
+                        .filter((item) => Boolean(item));
+                    if (items.length <= 1) return null;
+
+                    const triggerSrc = (
+                        trigger.getAttribute("data-post-image-preview-src") ||
+                        ""
+                    ).trim();
+                    let startIndex = anchors.findIndex(
+                        (anchor) => anchor === trigger,
+                    );
+                    if (startIndex < 0 && triggerSrc) {
+                        startIndex = items.findIndex(
+                            (item) => item && item.src === triggerSrc,
+                        );
+                    }
+                    if (startIndex < 0) {
+                        startIndex = 0;
+                    }
+
+                    return { items, startIndex };
+                };
+
+                document.addEventListener("click", (event) => {
+                    const trigger = event.target.closest(
+                        "[data-post-image-preview-src]",
+                    );
+                    if (trigger) {
+                        event.preventDefault();
+                        const singleItem = normalizeItem(
+                            trigger.getAttribute(
+                                "data-post-image-preview-src",
+                            ) || "",
+                            trigger.getAttribute(
+                                "data-post-image-preview-alt",
+                            ) || "post image preview",
+                        );
+                        if (!singleItem) {
+                            return;
+                        }
+
+                        const gallery = buildGalleryFromTrigger(trigger);
+                        if (gallery) {
+                            openPreview(
+                                gallery.items,
+                                gallery.startIndex,
+                                trigger,
+                            );
+                        } else {
+                            openPreview([singleItem], 0, trigger);
+                        }
+                        return;
+                    }
+
+                    const prevTrigger = event.target.closest(
+                        "#post-image-preview-prev",
+                    );
+                    if (prevTrigger && isOpen()) {
+                        event.preventDefault();
+                        setCurrentIndex(currentIndex - 1);
+                        return;
+                    }
+
+                    const nextTrigger = event.target.closest(
+                        "#post-image-preview-next",
+                    );
+                    if (nextTrigger && isOpen()) {
+                        event.preventDefault();
+                        setCurrentIndex(currentIndex + 1);
+                        return;
+                    }
+
+                    const dotTrigger = event.target.closest(
+                        "[data-post-image-preview-dot]",
+                    );
+                    if (dotTrigger && isOpen()) {
+                        event.preventDefault();
+                        const dotIndex = Number.parseInt(
+                            dotTrigger.getAttribute(
+                                "data-post-image-preview-dot",
+                            ) || "0",
+                            10,
+                        );
+                        setCurrentIndex(dotIndex);
+                        return;
+                    }
+
+                    if (
+                        event.target === modal ||
+                        event.target === closeButton
+                    ) {
+                        closePreview();
+                    }
+                });
+
+                document.addEventListener("keydown", (event) => {
+                    if (
+                        event.key === "Escape" &&
+                        modal.style.display === "flex"
+                    ) {
+                        closePreview();
+                        return;
+                    }
+
+                    if (!isOpen()) return;
+                    if (event.key === "ArrowLeft") {
+                        event.preventDefault();
+                        setCurrentIndex(currentIndex - 1);
+                    } else if (event.key === "ArrowRight") {
+                        event.preventDefault();
+                        setCurrentIndex(currentIndex + 1);
+                    }
+                });
+            })();
+        </script>
+        <script>
+            (() => {
+                const applyPostImageCarousel = (root = document) => {
+                    const grids = [];
+                    if (
+                        root &&
+                        typeof root.matches === "function" &&
+                        root.matches(".post-image-grid")
+                    ) {
+                        grids.push(root);
+                    }
+                    if (root && typeof root.querySelectorAll === "function") {
+                        grids.push(
+                            ...root.querySelectorAll(".post-image-grid"),
+                        );
+                    }
+
+                    for (const grid of grids) {
+                        if (
+                            !grid ||
+                            grid.dataset.postImageCarouselReady === "1"
+                        ) {
+                            continue;
+                        }
+
+                        const slides = Array.from(
+                            grid.querySelectorAll(":scope > a"),
+                        );
+                        if (slides.length <= 1) {
+                            grid.dataset.postImageCarouselReady = "1";
+                            continue;
+                        }
+
+                        grid.dataset.postImageCarouselReady = "1";
+                        grid.classList.add("post-image-carousel-track");
+
+                        const wrapper = document.createElement("div");
+                        wrapper.className = "post-image-carousel";
+                        wrapper.setAttribute("data-post-image-carousel", "1");
+                        grid.parentNode?.insertBefore(wrapper, grid);
+                        wrapper.appendChild(grid);
+
+                        for (const slide of slides) {
+                            slide.classList.add("post-image-slide");
+                        }
+
+                        const prevButton = document.createElement("button");
+                        prevButton.type = "button";
+                        prevButton.className =
+                            "post-image-carousel-button prev";
+                        prevButton.setAttribute("aria-label", "Previous image");
+                        prevButton.innerHTML =
+                            '<i class="bi bi-chevron-left"></i>';
+
+                        const nextButton = document.createElement("button");
+                        nextButton.type = "button";
+                        nextButton.className =
+                            "post-image-carousel-button next";
+                        nextButton.setAttribute("aria-label", "Next image");
+                        nextButton.innerHTML =
+                            '<i class="bi bi-chevron-right"></i>';
+
+                        const dots = document.createElement("div");
+                        dots.className = "post-image-carousel-dots";
+                        const dotButtons = slides.map((_, index) => {
+                            const dot = document.createElement("button");
+                            dot.type = "button";
+                            dot.className = "post-image-carousel-dot";
+                            dot.setAttribute(
+                                "aria-label",
+                                `Go to image ${index + 1}`,
+                            );
+                            dots.appendChild(dot);
+                            return dot;
+                        });
+
+                        wrapper.appendChild(prevButton);
+                        wrapper.appendChild(nextButton);
+                        wrapper.appendChild(dots);
+
+                        const clampIndex = (value) => {
+                            const numeric = Number.parseInt(
+                                String(value || "0"),
+                                10,
+                            );
+                            if (!Number.isFinite(numeric)) return 0;
+                            if (numeric <= 0) return 0;
+                            if (numeric >= slides.length - 1) {
+                                return slides.length - 1;
+                            }
+                            return numeric;
+                        };
+
+                        const getCurrentIndex = () => {
+                            const width = Math.max(grid.clientWidth, 1);
+                            return clampIndex(
+                                Math.round(grid.scrollLeft / width),
+                            );
+                        };
+
+                        const setCurrentIndex = (value) => {
+                            const index = clampIndex(value);
+                            prevButton.disabled = index <= 0;
+                            nextButton.disabled = index >= slides.length - 1;
+                            dotButtons.forEach((dotButton, dotIndex) => {
+                                const isActive = dotIndex === index;
+                                dotButton.classList.toggle("active", isActive);
+                                dotButton.setAttribute(
+                                    "aria-current",
+                                    isActive ? "true" : "false",
+                                );
+                            });
+                        };
+
+                        const scrollToIndex = (value, smooth = true) => {
+                            const index = clampIndex(value);
+                            const left = index * Math.max(grid.clientWidth, 1);
+                            grid.scrollTo({
+                                left,
+                                behavior: smooth ? "smooth" : "auto",
+                            });
+                            setCurrentIndex(index);
+                        };
+
+                        prevButton.addEventListener("click", (event) => {
+                            event.preventDefault();
+                            scrollToIndex(getCurrentIndex() - 1, true);
+                        });
+                        nextButton.addEventListener("click", (event) => {
+                            event.preventDefault();
+                            scrollToIndex(getCurrentIndex() + 1, true);
+                        });
+
+                        dotButtons.forEach((dotButton, dotIndex) => {
+                            dotButton.addEventListener("click", (event) => {
+                                event.preventDefault();
+                                scrollToIndex(dotIndex, true);
+                            });
+                        });
+
+                        let rafId = 0;
+                        grid.addEventListener(
+                            "scroll",
+                            () => {
+                                if (rafId) return;
+                                rafId = window.requestAnimationFrame(() => {
+                                    rafId = 0;
+                                    setCurrentIndex(getCurrentIndex());
+                                });
+                            },
+                            { passive: true },
+                        );
+
+                        let resizeTimer = 0;
+                        window.addEventListener("resize", () => {
+                            window.clearTimeout(resizeTimer);
+                            resizeTimer = window.setTimeout(() => {
+                                scrollToIndex(getCurrentIndex(), false);
+                            }, 100);
+                        });
+
+                        setCurrentIndex(0);
+                    }
+                };
+
+                window.applyPostImageCarousel = applyPostImageCarousel;
+                applyPostImageCarousel();
+            })();
+        </script>
+        <script>
+            (() => {
+                const truncateCommentPreview = (text, maxChars = 120) => {
+                    const value = String(text || "").trim();
+                    if (!value) return "";
+                    const chars = Array.from(value);
+                    if (chars.length <= maxChars) return value;
+                    return `${chars.slice(0, maxChars).join("")}...`;
+                };
+
+                const applyCommentReplyState = (
+                    commentForm,
+                    replyToCommentId,
+                    replyUsername,
+                    replyPreview,
+                ) => {
+                    if (!commentForm) return;
+                    const replyInput = commentForm.querySelector(
+                        "[data-comment-reply-input]",
+                    );
+                    const replyState = commentForm.querySelector(
+                        "[data-comment-reply-state]",
+                    );
+                    const replyLabel = commentForm.querySelector(
+                        "[data-comment-reply-label]",
+                    );
+                    const replyPreviewNode = commentForm.querySelector(
+                        "[data-comment-reply-preview]",
+                    );
+                    const commentInput =
+                        commentForm.querySelector("input[name='body']");
+
+                    const normalizedId = Number.parseInt(
+                        String(replyToCommentId || "0"),
+                        10,
+                    );
+                    const username = String(replyUsername || "").trim();
+                    const preview = truncateCommentPreview(replyPreview);
+                    if (normalizedId > 0 && username) {
+                        commentForm.dataset.replyUsername = username;
+                        commentForm.dataset.replyPreview = preview;
+                        if (replyInput) {
+                            replyInput.value = String(normalizedId);
+                        }
+                        if (replyLabel) {
+                            replyLabel.textContent = `Responding to @${username}`;
+                        }
+                        if (replyPreviewNode) {
+                            replyPreviewNode.textContent = preview;
+                        }
+                        if (replyState) {
+                            replyState.style.display = "";
+                        }
+                        if (commentInput) {
+                            commentInput.placeholder = `Respond to @${username}...`;
+                        }
+                        return;
+                    }
+
+                    if (replyInput) {
+                        replyInput.value = "";
+                    }
+                    commentForm.dataset.replyUsername = "";
+                    commentForm.dataset.replyPreview = "";
+                    if (replyLabel) {
+                        replyLabel.textContent = "";
+                    }
+                    if (replyPreviewNode) {
+                        replyPreviewNode.textContent = "";
+                    }
+                    if (replyState) {
+                        replyState.style.display = "none";
+                    }
+                    if (commentInput) {
+                        commentInput.placeholder = "Write a comment...";
+                    }
+                };
+
+                document.addEventListener("click", (event) => {
+                    const toggleButton = event.target.closest(
+                        "[data-post-edit-toggle]",
+                    );
+                    if (toggleButton) {
+                        event.preventDefault();
+                        const postId = toggleButton.getAttribute(
+                            "data-post-edit-toggle",
+                        );
+                        if (!postId) return;
+
+                        const form = document.getElementById(
+                            `post-edit-form-${postId}`,
+                        );
+                        if (!form) return;
+
+                        form.style.display =
+                            form.style.display === "none" ? "" : "none";
+                        if (form.style.display !== "none") {
+                            const textarea = form.querySelector("textarea");
+                            if (textarea) {
+                                textarea.focus();
+                                textarea.setSelectionRange(
+                                    textarea.value.length,
+                                    textarea.value.length,
+                                );
+                            }
+                        }
+
+                        const details = toggleButton.closest("details");
+                        if (details) {
+                            details.open = false;
+                        }
+                        return;
+                    }
+
+                    const commentToggleButton = event.target.closest(
+                        "[data-comment-edit-toggle]",
+                    );
+                    if (commentToggleButton) {
+                        event.preventDefault();
+                        const commentId = commentToggleButton.getAttribute(
+                            "data-comment-edit-toggle",
+                        );
+                        if (!commentId) return;
+
+                        const form = document.getElementById(
+                            `comment-edit-form-${commentId}`,
+                        );
+                        if (!form) return;
+
+                        form.style.display =
+                            form.style.display === "none" ? "" : "none";
+                        if (form.style.display !== "none") {
+                            const input =
+                                form.querySelector("input[name='body']");
+                            if (input) {
+                                input.focus();
+                                input.setSelectionRange(
+                                    input.value.length,
+                                    input.value.length,
+                                );
+                            }
+                        }
+                        return;
+                    }
+
+                    const commentCancelButton = event.target.closest(
+                        "[data-comment-edit-cancel]",
+                    );
+                    if (commentCancelButton) {
+                        event.preventDefault();
+                        const commentId = commentCancelButton.getAttribute(
+                            "data-comment-edit-cancel",
+                        );
+                        if (!commentId) return;
+
+                        const form = document.getElementById(
+                            `comment-edit-form-${commentId}`,
+                        );
+                        if (form) {
+                            form.style.display = "none";
+                        }
+                        return;
+                    }
+
+                    const replySetButton = event.target.closest(
+                        "[data-comment-reply-set]",
+                    );
+                    if (replySetButton) {
+                        event.preventDefault();
+                        const commentId = replySetButton.getAttribute(
+                            "data-comment-reply-set",
+                        );
+                        const replyUsername = replySetButton.getAttribute(
+                            "data-comment-reply-username",
+                        );
+                        const replyPreview = replySetButton.getAttribute(
+                            "data-comment-reply-preview",
+                        );
+                        const commentsBox =
+                            replySetButton.closest(".post-comments");
+                        const commentForm =
+                            commentsBox?.querySelector(".post-comment-form");
+                        if (!commentForm) return;
+
+                        applyCommentReplyState(
+                            commentForm,
+                            commentId,
+                            replyUsername,
+                            replyPreview,
+                        );
+                        const input =
+                            commentForm.querySelector("input[name='body']");
+                        if (input) {
+                            input.focus();
+                        }
+                        return;
+                    }
+
+                    const replyCancelButton = event.target.closest(
+                        "[data-comment-reply-cancel]",
+                    );
+                    if (replyCancelButton) {
+                        event.preventDefault();
+                        const commentForm =
+                            replyCancelButton.closest(".post-comment-form");
+                        applyCommentReplyState(commentForm, 0, "", "");
+                        return;
+                    }
+
+                    const cancelButton = event.target.closest(
+                        "[data-post-edit-cancel]",
+                    );
+                    if (!cancelButton) return;
+
+                    event.preventDefault();
+                    const postId = cancelButton.getAttribute(
+                        "data-post-edit-cancel",
+                    );
+                    if (!postId) return;
+
+                    const form = document.getElementById(
+                        `post-edit-form-${postId}`,
+                    );
+                    if (form) {
+                        form.style.display = "none";
+                    }
+                });
+            })();
+        </script>
+        <script>
+            (() => {
+                document.addEventListener("submit", async (event) => {
+                    const commentForm =
+                        event.target.closest(".post-comment-form");
+                    if (commentForm) {
+                        event.preventDefault();
+                        if (commentForm.dataset.pending === "1") return;
+
+                        const input =
+                            commentForm.querySelector("input[name='body']");
+                        const rawValue = input?.value || "";
+                        const commentText = rawValue.trim();
+                        if (!commentText) return;
+                        const replyInput = commentForm.querySelector(
+                            "[data-comment-reply-input]",
+                        );
+                        const replyState = commentForm.querySelector(
+                            "[data-comment-reply-state]",
+                        );
+                        const replyLabel = commentForm.querySelector(
+                            "[data-comment-reply-label]",
+                        );
+                        const replyPreviewNode = commentForm.querySelector(
+                            "[data-comment-reply-preview]",
+                        );
+                        const selectedReplyToCommentId = Number.parseInt(
+                            replyInput?.value || "0",
+                            10,
+                        );
+                        const activeReplyToCommentId =
+                            Number.isFinite(selectedReplyToCommentId) &&
+                            selectedReplyToCommentId > 0
+                                ? selectedReplyToCommentId
+                                : 0;
+                        let selectedReplyUsername = (
+                            commentForm.dataset.replyUsername || ""
+                        ).trim();
+                        let selectedReplyPreview = (
+                            commentForm.dataset.replyPreview || ""
+                        ).trim();
+
+                        commentForm.dataset.pending = "1";
+                        const submitButton = commentForm.querySelector(
+                            "button[type='submit']",
+                        );
+                        if (submitButton) {
+                            submitButton.disabled = true;
+                        }
+
+                        try {
+                            const payload = new URLSearchParams();
+                            payload.set("body", commentText);
+                            if (activeReplyToCommentId > 0) {
+                                payload.set(
+                                    "reply_to_comment_id",
+                                    String(activeReplyToCommentId),
+                                );
+                            }
+
+                            const response = await fetch(commentForm.action, {
+                                method: "POST",
+                                credentials: "same-origin",
+                                headers: {
+                                    "Content-Type":
+                                        "application/x-www-form-urlencoded;charset=UTF-8",
+                                    "X-Requested-With": "fetch",
+                                },
+                                body: payload,
+                            });
+
+                            if (
+                                response.redirected &&
+                                /\/login(?:$|[?#/])/.test(response.url)
+                            ) {
+                                window.location.href = response.url;
+                                return;
+                            }
+                            if (!response.ok) {
+                                const message = await response.text();
+                                throw new Error(
+                                    message || "Unable to add comment.",
+                                );
+                            }
+
+                            let createdCommentId = 0;
+                            let createdAtValue = new Date().toISOString();
+                            let createdReplyParentCommentId =
+                                activeReplyToCommentId;
+                            let createdReplyUsername = selectedReplyUsername;
+                            let createdReplyPreview = selectedReplyPreview;
+                            const contentType = (
+                                response.headers.get("content-type") || ""
+                            ).toLowerCase();
+                            if (contentType.includes("application/json")) {
+                                const payload = await response
+                                    .json()
+                                    .catch(() => null);
+                                const payloadCommentId = Number.parseInt(
+                                    payload?.comment_id || "0",
+                                    10,
+                                );
+                                if (
+                                    Number.isFinite(payloadCommentId) &&
+                                    payloadCommentId > 0
+                                ) {
+                                    createdCommentId = payloadCommentId;
+                                }
+                                const payloadCreatedAt =
+                                    typeof payload?.created_at === "string"
+                                        ? payload.created_at.trim()
+                                        : "";
+                                if (payloadCreatedAt) {
+                                    createdAtValue = payloadCreatedAt;
+                                }
+                                const payloadReplyParentCommentId =
+                                    Number.parseInt(
+                                        payload?.reply_parent_comment_id || "0",
+                                        10,
+                                    );
+                                if (
+                                    Number.isFinite(
+                                        payloadReplyParentCommentId,
+                                    ) &&
+                                    payloadReplyParentCommentId > 0
+                                ) {
+                                    createdReplyParentCommentId =
+                                        payloadReplyParentCommentId;
+                                } else {
+                                    createdReplyParentCommentId = 0;
+                                }
+                                const payloadReplyToUsername =
+                                    typeof payload?.reply_to_username ===
+                                    "string"
+                                        ? payload.reply_to_username.trim()
+                                        : "";
+                                if (payloadReplyToUsername) {
+                                    createdReplyUsername =
+                                        payloadReplyToUsername;
+                                }
+                                const payloadReplyPreview =
+                                    typeof payload?.reply_to_body_preview ===
+                                    "string"
+                                        ? payload.reply_to_body_preview.trim()
+                                        : "";
+                                if (payloadReplyPreview) {
+                                    createdReplyPreview = payloadReplyPreview;
+                                }
+                            }
+
+                            const postCard = commentForm.closest(".post-card");
+                            const commentsBox =
+                                commentForm.closest(".post-comments");
+                            if (postCard && commentsBox) {
+                                const emptyNode = commentsBox.querySelector(
+                                    ".post-comment-empty",
+                                );
+                                if (emptyNode) {
+                                    emptyNode.remove();
+                                }
+
+                                const sessionPublicId = Number.parseInt(
+                                    document.body.dataset.sessionPublicId ||
+                                        "0",
+                                    10,
+                                );
+                                const localProfileDomain = (
+                                    document.body.dataset.localProfileDomain ||
+                                    ""
+                                ).trim();
+                                const sessionUsername =
+                                    (
+                                        document.body.dataset.sessionUsername ||
+                                        ""
+                                    ).trim() || "user";
+                                const sessionPhoto =
+                                    (
+                                        document.body.dataset
+                                            .sessionProfilePhoto || ""
+                                    ).trim() || "/public/avatar.webp";
+                                const sessionPhotoStyle = (
+                                    document.body.dataset
+                                        .sessionProfilePhotoStyle || ""
+                                ).trim();
+
+                                const article =
+                                    document.createElement("article");
+                                if (createdCommentId > 0) {
+                                    article.id = `comment-${createdCommentId}`;
+                                }
+                                article.setAttribute(
+                                    "data-comment-id",
+                                    String(createdCommentId || 0),
+                                );
+                                article.setAttribute(
+                                    "data-comment-body",
+                                    commentText,
+                                );
+                                article.setAttribute(
+                                    "data-comment-username",
+                                    sessionUsername,
+                                );
+
+                                let createdDepth = 0;
+                                let parentCommentItem = null;
+                                if (createdReplyParentCommentId > 0) {
+                                    parentCommentItem =
+                                        commentsBox.querySelector(
+                                            `#comment-${createdReplyParentCommentId}`,
+                                        );
+                                    if (parentCommentItem) {
+                                        const parentDepth = Number.parseInt(
+                                            parentCommentItem.getAttribute(
+                                                "data-comment-depth",
+                                            ) || "0",
+                                            10,
+                                        );
+                                        createdDepth = Number.isFinite(
+                                            parentDepth,
+                                        )
+                                            ? parentDepth + 1
+                                            : 1;
+                                    } else {
+                                        createdDepth = 1;
+                                    }
+                                }
+                                article.className =
+                                    createdDepth > 0
+                                        ? "post-comment-item post-comment-item-reply"
+                                        : "post-comment-item";
+                                article.setAttribute(
+                                    "data-comment-depth",
+                                    String(createdDepth),
+                                );
+                                article.style.setProperty(
+                                    "--comment-thread-depth",
+                                    String(createdDepth),
+                                );
+
+                                const author = document.createElement("a");
+                                author.className = "post-comment-author";
+                                author.href =
+                                    sessionUsername && localProfileDomain
+                                        ? `/user/${encodeURIComponent(sessionUsername)}@${encodeURIComponent(localProfileDomain)}`
+                                        : "#";
+
+                                const avatar = document.createElement("img");
+                                avatar.className = "post-comment-avatar";
+                                avatar.src = sessionPhoto;
+                                avatar.alt = "avatar";
+                                if (sessionPhotoStyle) {
+                                    avatar.style.cssText = sessionPhotoStyle;
+                                }
+
+                                const strong = document.createElement("strong");
+                                strong.textContent = `@${sessionUsername}`;
+
+                                author.appendChild(avatar);
+                                author.appendChild(strong);
+
+                                const body = document.createElement("p");
+                                body.className = "post-comment-body";
+                                body.textContent = commentText;
+
+                                let replyPreviewBlock = null;
+                                if (
+                                    createdReplyParentCommentId > 0 &&
+                                    createdReplyUsername
+                                ) {
+                                    replyPreviewBlock =
+                                        document.createElement("div");
+                                    replyPreviewBlock.className =
+                                        "post-comment-reply-preview";
+
+                                    const previewLabel =
+                                        document.createElement("small");
+                                    previewLabel.textContent = `Replying to @${createdReplyUsername}`;
+                                    replyPreviewBlock.appendChild(previewLabel);
+
+                                    if (createdReplyPreview) {
+                                        const previewBody =
+                                            document.createElement("p");
+                                        previewBody.textContent =
+                                            createdReplyPreview;
+                                        replyPreviewBlock.appendChild(
+                                            previewBody,
+                                        );
+                                    }
+                                }
+
+                                const interactions =
+                                    document.createElement("div");
+                                interactions.className =
+                                    "post-comment-interactions";
+                                if (createdCommentId > 0) {
+                                    const likeForm =
+                                        document.createElement("form");
+                                    likeForm.action = `/posts/comments/${encodeURIComponent(String(createdCommentId))}/like`;
+                                    likeForm.method = "post";
+                                    likeForm.className =
+                                        "post-interaction-form";
+                                    likeForm.setAttribute(
+                                        "data-post-action",
+                                        "like",
+                                    );
+                                    likeForm.setAttribute(
+                                        "data-post-id",
+                                        String(createdCommentId),
+                                    );
+
+                                    const likeButton =
+                                        document.createElement("button");
+                                    likeButton.type = "submit";
+                                    likeButton.className = "small button";
+                                    likeButton.setAttribute(
+                                        "data-post-toggle-button",
+                                        "",
+                                    );
+                                    likeButton.setAttribute(
+                                        "data-post-toggle-kind",
+                                        "like",
+                                    );
+                                    likeButton.setAttribute(
+                                        "data-post-toggle-active",
+                                        "0",
+                                    );
+
+                                    const likeLabel =
+                                        document.createElement("span");
+                                    likeLabel.setAttribute(
+                                        "data-post-toggle-label",
+                                        "",
+                                    );
+                                    likeLabel.innerHTML =
+                                        '<i class="bi bi-heart-fill"> </i>';
+
+                                    const likeCount =
+                                        document.createElement("span");
+                                    likeCount.setAttribute(
+                                        "data-post-toggle-count",
+                                        "",
+                                    );
+                                    likeCount.textContent = "0";
+
+                                    likeButton.appendChild(likeLabel);
+                                    likeButton.appendChild(likeCount);
+                                    likeForm.appendChild(likeButton);
+                                    interactions.appendChild(likeForm);
+
+                                    const replyButton =
+                                        document.createElement("button");
+                                    replyButton.type = "button";
+                                    replyButton.className = "small button";
+                                    replyButton.setAttribute(
+                                        "data-comment-reply-set",
+                                        String(createdCommentId),
+                                    );
+                                    replyButton.setAttribute(
+                                        "data-comment-reply-username",
+                                        sessionUsername,
+                                    );
+                                    replyButton.setAttribute(
+                                        "data-comment-reply-preview",
+                                        commentText,
+                                    );
+                                    replyButton.textContent = "Respond";
+                                    interactions.appendChild(replyButton);
+                                } else {
+                                    const likePill =
+                                        document.createElement("span");
+                                    likePill.className =
+                                        "post-interaction-pill";
+                                    likePill.textContent = "Likes 0";
+                                    interactions.appendChild(likePill);
+                                }
+
+                                const time = document.createElement("small");
+                                time.setAttribute(
+                                    "data-utc-datetime",
+                                    createdAtValue,
+                                );
+                                time.setAttribute(
+                                    "data-time-display",
+                                    "relative",
+                                );
+                                time.textContent = createdAtValue;
+
+                                const headRow = document.createElement("div");
+                                headRow.className =
+                                    "horizontal flex start no padding";
+                                headRow.style.justifyContent = "space-between";
+                                headRow.style.alignItems = "center";
+                                headRow.style.gap = "0.4em";
+                                headRow.appendChild(author);
+
+                                article.appendChild(headRow);
+                                if (replyPreviewBlock) {
+                                    article.appendChild(replyPreviewBlock);
+                                }
+                                article.appendChild(body);
+                                article.appendChild(interactions);
+                                article.appendChild(time);
+
+                                let insertionPoint = commentForm;
+                                if (parentCommentItem) {
+                                    const parentDepth = Number.parseInt(
+                                        parentCommentItem.getAttribute(
+                                            "data-comment-depth",
+                                        ) || "0",
+                                        10,
+                                    );
+                                    let cursor =
+                                        parentCommentItem.nextElementSibling;
+                                    while (cursor && cursor !== commentForm) {
+                                        const cursorDepth = Number.parseInt(
+                                            cursor.getAttribute(
+                                                "data-comment-depth",
+                                            ) || "0",
+                                            10,
+                                        );
+                                        if (
+                                            !Number.isFinite(cursorDepth) ||
+                                            cursorDepth <= parentDepth
+                                        ) {
+                                            break;
+                                        }
+                                        cursor = cursor.nextElementSibling;
+                                    }
+                                    insertionPoint = cursor || commentForm;
+                                }
+                                commentsBox.insertBefore(
+                                    article,
+                                    insertionPoint,
+                                );
+
+                                const countNode = postCard.querySelector(
+                                    "[data-post-comments-count]",
+                                );
+                                if (countNode) {
+                                    const current = Number.parseInt(
+                                        countNode.textContent || "0",
+                                        10,
+                                    );
+                                    const next = Number.isFinite(current)
+                                        ? current + 1
+                                        : 1;
+                                    countNode.textContent = String(next);
+                                }
+
+                                if (
+                                    typeof window.applyLocalDateTimes ===
+                                    "function"
+                                ) {
+                                    window.applyLocalDateTimes(article);
+                                }
+                            }
+
+                            if (input) {
+                                input.value = "";
+                                input.placeholder = "Write a comment...";
+                            }
+                            if (replyInput) {
+                                replyInput.value = "";
+                            }
+                            commentForm.dataset.replyUsername = "";
+                            commentForm.dataset.replyPreview = "";
+                            if (replyLabel) {
+                                replyLabel.textContent = "";
+                            }
+                            if (replyPreviewNode) {
+                                replyPreviewNode.textContent = "";
+                            }
+                            if (replyState) {
+                                replyState.style.display = "none";
+                            }
+                        } catch (error) {
+                            window.alert(
+                                error instanceof Error
+                                    ? error.message
+                                    : "Unable to add comment right now.",
+                            );
+                        } finally {
+                            commentForm.dataset.pending = "0";
+                            if (submitButton) {
+                                submitButton.disabled = false;
+                            }
+                        }
+                        return;
+                    }
+
+                    const form = event.target.closest(
+                        ".post-interaction-form[data-post-action]",
+                    );
+                    if (!form) return;
+
+                    event.preventDefault();
+                    const button = form.querySelector(
+                        "[data-post-toggle-button]",
+                    );
+                    if (!button || button.dataset.pending === "1") return;
+
+                    const kind =
+                        (
+                            button.getAttribute("data-post-toggle-kind") ||
+                            form.getAttribute("data-post-action") ||
+                            ""
+                        ).toLowerCase() || "like";
+                    if (
+                        kind !== "like" &&
+                        kind !== "dislike" &&
+                        kind !== "share"
+                    )
+                        return;
+
+                    const labelNode = button.querySelector(
+                        "[data-post-toggle-label]",
+                    );
+                    const countNode = button.querySelector(
+                        "[data-post-toggle-count]",
+                    );
+
+                    button.dataset.pending = "1";
+                    button.disabled = true;
+
+                    try {
+                        const response = await fetch(form.action, {
+                            method: "POST",
+                            credentials: "same-origin",
+                            headers: { "X-Requested-With": "fetch" },
+                        });
+                        if (
+                            response.redirected &&
+                            /\/login(?:$|[?#/])/.test(response.url)
+                        ) {
+                            window.location.href = response.url;
+                            return;
+                        }
+                        if (!response.ok) {
+                            throw new Error("post interaction failed");
+                        }
+
+                        const wasActive =
+                            button.getAttribute("data-post-toggle-active") ===
+                            "1";
+                        const nextActive = !wasActive;
+                        button.setAttribute(
+                            "data-post-toggle-active",
+                            nextActive ? "1" : "0",
+                        );
+
+                        const currentCount = Number.parseInt(
+                            countNode?.textContent || "0",
+                            10,
+                        );
+                        const normalizedCount = Number.isFinite(currentCount)
+                            ? currentCount
+                            : 0;
+                        const nextCount = Math.max(
+                            0,
+                            normalizedCount + (nextActive ? 1 : -1),
+                        );
+
+                        if (labelNode) {
+                            if (kind === "like") {
+                                labelNode.innerHTML = nextActive
+                                    ? button.hasAttribute(
+                                          "data-post-toggle-exclusive-kind",
+                                      )
+                                        ? '<i class="bi bi-arrow-up-circle-fill" style="color: hsl(161.4, 94%, 30%)"> </i>'
+                                        : '<i class="bi bi-heart-fill" style="color: red"> </i>'
+                                    : button.hasAttribute(
+                                            "data-post-toggle-exclusive-kind",
+                                        )
+                                      ? '<i class="bi bi-arrow-up-circle-fill"> </i>'
+                                      : '<i class="bi bi-heart-fill"> </i>';
+                            } else if (kind === "dislike") {
+                                labelNode.innerHTML = nextActive
+                                    ? '<i class="bi bi-arrow-down-circle-fill" style="color: #b42318"> </i>'
+                                    : '<i class="bi bi-arrow-down-circle-fill"> </i>';
+                            } else {
+                                labelNode.textContent = nextActive
+                                    ? "Unshare in feed"
+                                    : "Share in feed";
+                            }
+                        }
+                        if (countNode) {
+                            countNode.textContent = String(nextCount);
+                        }
+
+                        const exclusiveKind = (
+                            button.getAttribute(
+                                "data-post-toggle-exclusive-kind",
+                            ) || ""
+                        ).toLowerCase();
+                        if (nextActive && exclusiveKind) {
+                            const postCard = form.closest("[data-post-id]");
+                            const exclusiveButton = postCard?.querySelector(
+                                `[data-post-toggle-button][data-post-toggle-kind="${exclusiveKind}"][data-post-toggle-active="1"]`,
+                            );
+                            if (exclusiveButton) {
+                                exclusiveButton.setAttribute(
+                                    "data-post-toggle-active",
+                                    "0",
+                                );
+                                const exclusiveCount =
+                                    exclusiveButton.querySelector(
+                                        "[data-post-toggle-count]",
+                                    );
+                                const exclusiveCurrent = Number.parseInt(
+                                    exclusiveCount?.textContent || "0",
+                                    10,
+                                );
+                                if (exclusiveCount) {
+                                    exclusiveCount.textContent = String(
+                                        Math.max(
+                                            0,
+                                            (Number.isFinite(exclusiveCurrent)
+                                                ? exclusiveCurrent
+                                                : 0) - 1,
+                                        ),
+                                    );
+                                }
+                                const exclusiveLabel =
+                                    exclusiveButton.querySelector(
+                                        "[data-post-toggle-label]",
+                                    );
+                                if (exclusiveLabel) {
+                                    exclusiveLabel.innerHTML =
+                                        exclusiveKind === "like"
+                                            ? '<i class="bi bi-arrow-up-circle-fill"> </i>'
+                                            : '<i class="bi bi-arrow-down-circle-fill"> </i>';
+                                }
+                            }
+                        }
+                    } catch (_error) {
+                        window.alert("Unable to update this post right now.");
+                    } finally {
+                        button.disabled = false;
+                        button.dataset.pending = "0";
+                    }
+                });
+            })();
+        </script>
+        <script>
+            (() => {
+                const MESSENGER_SHARE_KEY = "instavox.pending_messenger_share";
+
+                const resolvePostShareUrl = (trigger) => {
+                    if (!trigger) return "";
+                    const rawPath = (
+                        trigger.getAttribute("data-post-share-url") || ""
+                    ).trim();
+                    if (!rawPath) return "";
+                    try {
+                        return new URL(
+                            rawPath,
+                            window.location.origin,
+                        ).toString();
+                    } catch (_error) {
+                        return "";
+                    }
+                };
+
+                const closeParentDetails = (trigger) => {
+                    const details = trigger?.closest("details");
+                    if (details) {
+                        details.open = false;
+                    }
+                };
+
+                const copyText = async (value) => {
+                    if (!value) return false;
+                    try {
+                        if (
+                            navigator.clipboard &&
+                            typeof navigator.clipboard.writeText === "function"
+                        ) {
+                            await navigator.clipboard.writeText(value);
+                            return true;
+                        }
+                    } catch (_error) {}
+
+                    try {
+                        const textarea = document.createElement("textarea");
+                        textarea.value = value;
+                        textarea.setAttribute("readonly", "");
+                        textarea.style.position = "fixed";
+                        textarea.style.left = "-9999px";
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        const copied = document.execCommand("copy");
+                        document.body.removeChild(textarea);
+                        return copied;
+                    } catch (_error) {
+                        return false;
+                    }
+                };
+
+                document.addEventListener("click", async (event) => {
+                    const messengerButton = event.target.closest(
+                        "[data-post-share-messenger]",
+                    );
+                    if (messengerButton) {
+                        event.preventDefault();
+                        const shareUrl = resolvePostShareUrl(messengerButton);
+                        if (!shareUrl) return;
+
+                        try {
+                            window.sessionStorage.setItem(
+                                MESSENGER_SHARE_KEY,
+                                shareUrl,
+                            );
+                        } catch (_error) {}
+
+                        closeParentDetails(messengerButton);
+                        window.location.href = "/messenger";
+                        return;
+                    }
+
+                    const copyButton = event.target.closest(
+                        "[data-post-share-copy-link]",
+                    );
+                    if (!copyButton) return;
+
+                    event.preventDefault();
+                    const shareUrl = resolvePostShareUrl(copyButton);
+                    if (!shareUrl) return;
+
+                    const copied = await copyText(shareUrl);
+                    closeParentDetails(copyButton);
+
+                    if (copied) {
+                        window.alert("Post link copied.");
+                    } else {
+                        window.prompt("Copy this link:", shareUrl);
+                    }
+                });
+            })();
+        </script>
+        <script>
+            (() => {
+                const parseUtcDate = (value) => {
+                    if (!value || typeof value !== "string") return null;
+
+                    const trimmed = value.trim();
+                    if (!trimmed) return null;
+
+                    if (/[zZ]|[+-]\d{2}:\d{2}$/.test(trimmed)) {
+                        const direct = new Date(trimmed);
+                        return Number.isNaN(direct.getTime()) ? null : direct;
+                    }
+
+                    const normalized = trimmed.replace(" ", "T");
+                    const withUtc = `${normalized}Z`;
+                    const parsed = new Date(withUtc);
+                    if (!Number.isNaN(parsed.getTime())) {
+                        return parsed;
+                    }
+
+                    const fallback = new Date(trimmed);
+                    return Number.isNaN(fallback.getTime()) ? null : fallback;
+                };
+
+                const formatUtcDateTime = (
+                    value,
+                    options = {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                    },
+                ) => {
+                    const parsed = parseUtcDate(value);
+                    if (!parsed) return value || "";
+                    return new Intl.DateTimeFormat(undefined, options).format(
+                        parsed,
+                    );
+                };
+
+                const formatRelativeTime = (value, cutoffDays = 6) => {
+                    const parsed = parseUtcDate(value);
+                    if (!parsed) return value || "";
+
+                    const elapsedSeconds = Math.floor(
+                        (Date.now() - parsed.getTime()) / 1000,
+                    );
+                    if (elapsedSeconds < 0) {
+                        return formatUtcDateTime(value);
+                    }
+
+                    const formatUnit = (count, unit) =>
+                        `${count} ${unit}${count === 1 ? "" : "s"} ago`;
+                    if (elapsedSeconds < 60) {
+                        return formatUnit(elapsedSeconds, "second");
+                    }
+
+                    const elapsedMinutes = Math.floor(elapsedSeconds / 60);
+                    if (elapsedMinutes < 60) {
+                        return formatUnit(elapsedMinutes, "minute");
+                    }
+
+                    const elapsedHours = Math.floor(elapsedMinutes / 60);
+                    if (elapsedHours < 24) {
+                        return formatUnit(elapsedHours, "hour");
+                    }
+
+                    const elapsedDays = Math.floor(elapsedHours / 24);
+                    if (elapsedDays <= cutoffDays) {
+                        return formatUnit(elapsedDays, "day");
+                    }
+
+                    return formatUtcDateTime(value);
+                };
+
+                const applyLocalDateTimes = (root = document) => {
+                    const selector = "[data-utc-datetime]";
+                    const nodes = [];
+                    if (
+                        root &&
+                        typeof root.matches === "function" &&
+                        root.matches(selector)
+                    ) {
+                        nodes.push(root);
+                    }
+
+                    if (root && typeof root.querySelectorAll === "function") {
+                        nodes.push(...root.querySelectorAll(selector));
+                    }
+
+                    for (const node of nodes) {
+                        const rawValue =
+                            node.getAttribute("data-utc-datetime") || "";
+                        const tooltip = formatUtcDateTime(rawValue, {
+                            dateStyle: "medium",
+                            timeStyle: "medium",
+                        });
+                        if (tooltip) {
+                            node.title = tooltip;
+                        }
+
+                        const displayMode =
+                            node.getAttribute("data-time-display") ||
+                            "relative";
+                        const nextText =
+                            displayMode === "absolute"
+                                ? formatUtcDateTime(rawValue)
+                                : formatRelativeTime(rawValue, 6);
+                        if (node.textContent !== nextText) {
+                            node.textContent = nextText;
+                        }
+                    }
+                };
+
+                window.parseUtcDate = parseUtcDate;
+                window.formatUtcDateTime = formatUtcDateTime;
+                window.formatRelativeTime = formatRelativeTime;
+                window.applyLocalDateTimes = applyLocalDateTimes;
+                applyLocalDateTimes();
+                window.setInterval(() => applyLocalDateTimes(), 1000);
+            })();
+        </script>
+        <script>
+            (() => {
+                const linkImageCache = new Map();
+                const pendingRequests = new Map();
+
+                const resolveLinkImage = async (linkUrl) => {
+                    if (!linkUrl) return "";
+                    if (linkImageCache.has(linkUrl)) {
+                        return linkImageCache.get(linkUrl) || "";
+                    }
+                    if (pendingRequests.has(linkUrl)) {
+                        return pendingRequests.get(linkUrl);
+                    }
+
+                    const request = fetch(
+                        `/v1/auth/link-first-image?url=${encodeURIComponent(linkUrl)}`,
+                        { credentials: "same-origin" },
+                    )
+                        .then((response) =>
+                            response.ok ? response.json() : null,
+                        )
+                        .then((payload) => {
+                            const imageUrl =
+                                payload && typeof payload.image_url === "string"
+                                    ? payload.image_url.trim()
+                                    : "";
+                            linkImageCache.set(linkUrl, imageUrl);
+                            return imageUrl;
+                        })
+                        .catch(() => {
+                            linkImageCache.set(linkUrl, "");
+                            return "";
+                        })
+                        .finally(() => {
+                            pendingRequests.delete(linkUrl);
+                        });
+
+                    pendingRequests.set(linkUrl, request);
+                    return request;
+                };
+
+                const hasExternalLinkImage = (card) => {
+                    const previous = card.previousElementSibling;
+                    return (
+                        !!previous &&
+                        previous.classList.contains("post-link-image-anchor")
+                    );
+                };
+
+                const insertExternalLinkImage = (card, linkUrl, imageUrl) => {
+                    if (!card || !linkUrl || !imageUrl) return;
+                    if (hasExternalLinkImage(card)) return;
+
+                    const imageAnchor = document.createElement("a");
+                    imageAnchor.href = linkUrl;
+                    imageAnchor.target = "_blank";
+                    imageAnchor.rel = "noopener noreferrer";
+                    imageAnchor.className = "post-link-image-anchor";
+                    imageAnchor.setAttribute(
+                        "data-post-image-preview-src",
+                        imageUrl,
+                    );
+                    imageAnchor.setAttribute(
+                        "data-post-image-preview-alt",
+                        "Link image preview",
+                    );
+
+                    const image = document.createElement("img");
+                    image.src = imageUrl;
+                    image.alt = "Link image preview";
+                    image.className = "post-link-first-image";
+                    imageAnchor.appendChild(image);
+
+                    card.parentNode?.insertBefore(imageAnchor, card);
+                };
+
+                const enhancePostLinkPreviews = (root = document) => {
+                    const cards =
+                        root.querySelectorAll?.(
+                            ".post-link-preview[data-link-preview-url]",
+                        ) || [];
+                    for (const card of cards) {
+                        if (card.dataset.linkPreviewResolved === "1") continue;
+                        card.dataset.linkPreviewResolved = "1";
+
+                        const linkUrl =
+                            card.getAttribute("data-link-preview-url") || "";
+                        if (!linkUrl) continue;
+
+                        // Migrate any legacy inline image inside the preview card.
+                        const inlineImage = card.querySelector(
+                            "img.post-link-preview-image, img",
+                        );
+                        const inlineImageUrl = inlineImage
+                            ?.getAttribute("src")
+                            ?.trim();
+                        if (inlineImageUrl) {
+                            insertExternalLinkImage(
+                                card,
+                                linkUrl,
+                                inlineImageUrl,
+                            );
+                        }
+                        if (inlineImage) {
+                            inlineImage.remove();
+                        }
+
+                        resolveLinkImage(linkUrl).then((imageUrl) => {
+                            if (!imageUrl) return;
+                            insertExternalLinkImage(card, linkUrl, imageUrl);
+                        });
+                    }
+                };
+
+                window.enhancePostLinkPreviews = enhancePostLinkPreviews;
+                enhancePostLinkPreviews();
+            })();
+        </script>
+        <script>
+            (() => {
+                const POST_LINK_REGEX = /https?:\/\/[^\s<>"')]+/gi;
+
+                const buildLinkifiedFragment = (text) => {
+                    if (!text || !POST_LINK_REGEX.test(text)) return null;
+                    POST_LINK_REGEX.lastIndex = 0;
+
+                    const fragment = document.createDocumentFragment();
+                    let lastIndex = 0;
+                    let hasLink = false;
+                    let match = null;
+
+                    while ((match = POST_LINK_REGEX.exec(text)) !== null) {
+                        const rawUrl = match[0] || "";
+                        const cleanUrl = rawUrl.replace(/[),.!?;:]+$/g, "");
+                        const matchStart = match.index;
+
+                        if (matchStart > lastIndex) {
+                            fragment.appendChild(
+                                document.createTextNode(
+                                    text.slice(lastIndex, matchStart),
+                                ),
+                            );
+                        }
+
+                        if (cleanUrl) {
+                            hasLink = true;
+                            const link = document.createElement("a");
+                            link.href = cleanUrl;
+                            link.target = "_blank";
+                            link.rel = "noopener noreferrer";
+                            link.className = "post-inline-link";
+                            link.textContent = cleanUrl;
+                            fragment.appendChild(link);
+
+                            const trailing = rawUrl.slice(cleanUrl.length);
+                            if (trailing) {
+                                fragment.appendChild(
+                                    document.createTextNode(trailing),
+                                );
+                            }
+                        } else {
+                            fragment.appendChild(
+                                document.createTextNode(rawUrl),
+                            );
+                        }
+
+                        lastIndex = matchStart + rawUrl.length;
+                    }
+
+                    if (lastIndex < text.length) {
+                        fragment.appendChild(
+                            document.createTextNode(text.slice(lastIndex)),
+                        );
+                    }
+
+                    return hasLink ? fragment : null;
+                };
+
+                const linkifyPostBody = (node) => {
+                    if (!node || node.dataset.postBodyLinked === "1") return;
+
+                    const textNodes = [];
+                    const walker = document.createTreeWalker(
+                        node,
+                        NodeFilter.SHOW_TEXT,
+                        {
+                            acceptNode(textNode) {
+                                const text = textNode.nodeValue || "";
+                                if (!text || !text.includes("http")) {
+                                    return NodeFilter.FILTER_REJECT;
+                                }
+
+                                const parent = textNode.parentElement;
+                                if (!parent) {
+                                    return NodeFilter.FILTER_REJECT;
+                                }
+                                if (parent.closest("a")) {
+                                    return NodeFilter.FILTER_REJECT;
+                                }
+
+                                return NodeFilter.FILTER_ACCEPT;
+                            },
+                        },
+                    );
+
+                    let current = walker.nextNode();
+                    while (current) {
+                        textNodes.push(current);
+                        current = walker.nextNode();
+                    }
+
+                    for (const textNode of textNodes) {
+                        const text = textNode.nodeValue || "";
+                        const fragment = buildLinkifiedFragment(text);
+                        if (fragment) {
+                            textNode.parentNode?.replaceChild(
+                                fragment,
+                                textNode,
+                            );
+                        }
+                    }
+
+                    node.dataset.postBodyLinked = "1";
+                };
+
+                const applyPostBodyLinks = (root = document) => {
+                    const nodes = [];
+                    if (
+                        root &&
+                        typeof root.matches === "function" &&
+                        root.matches(".post-body")
+                    ) {
+                        nodes.push(root);
+                    }
+
+                    if (root && typeof root.querySelectorAll === "function") {
+                        nodes.push(...root.querySelectorAll(".post-body"));
+                    }
+
+                    for (const node of nodes) {
+                        linkifyPostBody(node);
+                    }
+                };
+
+                window.applyPostBodyLinks = applyPostBodyLinks;
+                applyPostBodyLinks();
+            })();
+        </script>
+        <script>
+            (() => {
+                const clampPostBody = (card) => {
+                    if (!card || typeof card.querySelector !== "function")
+                        return;
+
+                    const body = card.querySelector("[data-post-body-clamp]");
+                    const seeMore = card.querySelector("[data-post-see-more]");
+                    if (!body || !seeMore) return;
+
+                    body.classList.remove("is-overflowing");
+                    seeMore.style.display = "none";
+
+                    const overflows = body.scrollHeight > body.clientHeight + 2;
+                    if (!overflows) return;
+
+                    body.classList.add("is-overflowing");
+                    seeMore.style.display = "inline-flex";
+                };
+
+                const applyPostBodyClamp = (root = document) => {
+                    const cards = [];
+                    if (
+                        root &&
+                        typeof root.matches === "function" &&
+                        root.matches(".post-card")
+                    ) {
+                        cards.push(root);
+                    }
+
+                    if (root && typeof root.querySelectorAll === "function") {
+                        cards.push(...root.querySelectorAll(".post-card"));
+                    }
+
+                    for (const card of cards) {
+                        clampPostBody(card);
+                    }
+                };
+
+                window.applyPostBodyClamp = applyPostBodyClamp;
+                applyPostBodyClamp();
+                window.addEventListener("resize", () => applyPostBodyClamp());
+            })();
+        </script>
+        <script>
+            (() => {
+                const trigger = document.querySelector(
+                    "button[popovertarget='notifications']",
+                );
+                const menu = document.getElementById("notifications");
+                if (!trigger || !menu) return;
+
+                let readAllForm = menu.querySelector(
+                    "form[action='/notifications/read-all']",
+                );
+                let deleteAllForm = menu.querySelector(
+                    "form[action='/notifications/delete-all']",
+                );
+                const emptyState = menu.querySelector(".notification-empty");
+                const headerRow = menu.querySelector(
+                    ".notification-menu-header",
+                );
+                let actionRow = menu.querySelector(
+                    ".notification-menu-actions",
+                );
+                if (!actionRow && headerRow) {
+                    actionRow = document.createElement("div");
+                    actionRow.className = "notification-menu-actions";
+                    headerRow.appendChild(actionRow);
+                }
+
+                const ensureActionRow = () => {
+                    if (actionRow) return actionRow;
+
+                    actionRow = menu.querySelector(
+                        ".notification-menu-actions",
+                    );
+                    if (actionRow) return actionRow;
+
+                    const legacyRow = menu.querySelector(":scope > .flex");
+                    if (legacyRow) {
+                        legacyRow.classList.add("notification-menu-actions");
+                        actionRow = legacyRow;
+                        return actionRow;
+                    }
+
+                    const list = menu.querySelector(".dropdown-list");
+                    actionRow = document.createElement("div");
+                    actionRow.className = "notification-menu-actions";
+                    if (list) {
+                        menu.insertBefore(actionRow, list);
+                    } else {
+                        menu.prepend(actionRow);
+                    }
+
+                    return actionRow;
+                };
+
+                const ensureReadAllForm = () => {
+                    if (readAllForm) return readAllForm;
+                    const row = ensureActionRow();
+                    if (!row) return null;
+
+                    readAllForm = document.createElement("form");
+                    readAllForm.action = "/notifications/read-all";
+                    readAllForm.method = "post";
+                    readAllForm.className = "notification-read-all-form";
+
+                    const button = document.createElement("button");
+                    button.type = "submit";
+                    button.className = "small button";
+                    button.textContent = "Mark all read";
+                    readAllForm.appendChild(button);
+
+                    row.appendChild(readAllForm);
+                    return readAllForm;
+                };
+
+                const ensureDeleteAllForm = () => {
+                    if (deleteAllForm) return deleteAllForm;
+                    const row = ensureActionRow();
+                    if (!row) return null;
+
+                    deleteAllForm = document.createElement("form");
+                    deleteAllForm.action = "/notifications/delete-all";
+                    deleteAllForm.method = "post";
+                    deleteAllForm.className = "notification-delete-all-form";
+
+                    const button = document.createElement("button");
+                    button.type = "submit";
+                    button.className = "small button";
+                    button.textContent = "Delete all";
+                    deleteAllForm.appendChild(button);
+
+                    row.appendChild(deleteAllForm);
+                    return deleteAllForm;
+                };
+
+                const getNotificationList = () => {
+                    let list = menu.querySelector(".dropdown-list");
+                    if (!list) {
+                        list = document.createElement("ul");
+                        list.className = "dropdown-list notification-list";
+                        menu.appendChild(list);
+                    } else {
+                        list.classList.add("notification-list");
+                    }
+                    return list;
+                };
+
+                const NOTIFICATION_PAGE_SIZE = 20;
+                let loadingOlderNotifications = false;
+                let hasMoreOlderNotifications = true;
+
+                const getOldestNotificationId = () => {
+                    const list = getNotificationList();
+                    const items = Array.from(
+                        list.querySelectorAll(".notification-item"),
+                    );
+                    if (items.length === 0) return 0;
+
+                    for (let index = items.length - 1; index >= 0; index -= 1) {
+                        const value = Number.parseInt(
+                            items[index].dataset.notificationId || "0",
+                            10,
+                        );
+                        if (Number.isFinite(value) && value > 0) {
+                            return value;
+                        }
+                    }
+                    return 0;
+                };
+
+                const setDeleteAllVisible = (isVisible) => {
+                    const form = ensureDeleteAllForm();
+                    if (form) form.style.display = isVisible ? "" : "none";
+                };
+
+                const setUnreadCount = (nextCount) => {
+                    const count = Number.isFinite(nextCount)
+                        ? Math.max(0, Math.floor(nextCount))
+                        : 0;
+                    let badge = trigger.querySelector(".notification-badge");
+                    if (count > 0) {
+                        if (!badge) {
+                            badge = document.createElement("span");
+                            badge.className = "notification-badge";
+                            trigger.appendChild(badge);
+                        }
+                        badge.textContent = String(count);
+                        const form = ensureReadAllForm();
+                        if (form) form.style.display = "";
+                    } else {
+                        if (badge) badge.remove();
+                        if (readAllForm) readAllForm.style.display = "none";
+                    }
+                };
+
+                const currentUnreadCount = () => {
+                    const value = Number.parseInt(
+                        trigger.querySelector(".notification-badge")
+                            ?.textContent || "0",
+                        10,
+                    );
+                    return Number.isFinite(value) ? Math.max(0, value) : 0;
+                };
+
+                const closeNotificationsPopover = () => {
+                    if (!menu) return;
+                    if (typeof menu.hidePopover === "function") {
+                        try {
+                            menu.hidePopover();
+                            return;
+                        } catch (_error) {
+                            // continue with fallback
+                        }
+                    }
+                    if (
+                        document.activeElement &&
+                        typeof document.activeElement.blur === "function"
+                    ) {
+                        document.activeElement.blur();
+                    }
+                };
+
+                const markNotificationItemReadLocally = (item) => {
+                    if (!item || !item.classList.contains("unread")) {
+                        return false;
+                    }
+                    item.classList.remove("unread");
+                    return true;
+                };
+
+                const markAllNotificationsReadLocally = () => {
+                    const list = getNotificationList();
+                    const unreadItems = list.querySelectorAll(
+                        ".notification-item.unread",
+                    );
+                    for (const item of unreadItems) {
+                        item.classList.remove("unread");
+                    }
+                    setUnreadCount(0);
+                };
+
+                const renderNotification = (
+                    notification,
+                    { prepend = true } = {},
+                ) => {
+                    if (!notification || typeof notification !== "object")
+                        return;
+
+                    const list = getNotificationList();
+                    const notificationId = Number.parseInt(
+                        notification.notification_id ?? "0",
+                        10,
+                    );
+                    const messageCount = Math.max(
+                        1,
+                        Number.parseInt(
+                            notification.message_count ?? "1",
+                            10,
+                        ) || 1,
+                    );
+                    if (Number.isFinite(notificationId) && notificationId > 0) {
+                        const existing = list.querySelector(
+                            `[data-notification-id="${notificationId}"]`,
+                        );
+                        if (existing) {
+                            if (!prepend) return;
+                            existing.remove();
+                        }
+                    }
+
+                    const item = document.createElement("li");
+                    const isUnread = notification.is_unread !== false;
+                    item.className = isUnread
+                        ? "notification-item box unread"
+                        : "notification-item box";
+                    if (Number.isFinite(notificationId) && notificationId > 0) {
+                        item.dataset.notificationId = String(notificationId);
+                    }
+                    item.dataset.linkUrl = notification.link_url || "/";
+                    item.dataset.messageCount = String(messageCount);
+
+                    const link = document.createElement("a");
+                    link.href = notification.link_url || "/";
+                    link.className = "notification-item-link";
+
+                    const title = document.createElement("strong");
+                    title.textContent =
+                        notification.title && notification.title.trim()
+                            ? notification.title
+                            : "Notification";
+                    link.appendChild(title);
+
+                    const bodyText = (notification.body || "").trim();
+                    if (bodyText !== "") {
+                        const body = document.createElement("p");
+                        body.textContent = bodyText;
+                        link.appendChild(body);
+                    }
+
+                    if (messageCount > 1) {
+                        const count = document.createElement("small");
+                        count.className = "notification-message-count";
+                        count.textContent = `${messageCount} new messages`;
+                        link.appendChild(count);
+                    }
+
+                    const createdAt = document.createElement("small");
+                    createdAt.setAttribute(
+                        "data-utc-datetime",
+                        notification.created_at || "",
+                    );
+                    createdAt.setAttribute("data-time-display", "relative");
+                    createdAt.textContent = notification.created_at || "";
+                    link.appendChild(createdAt);
+                    item.appendChild(link);
+
+                    if (Number.isFinite(notificationId) && notificationId > 0) {
+                        const actions = document.createElement("form");
+                        actions.method = "post";
+                        actions.action = `/notifications/delete/${notificationId}`;
+                        actions.className = "notification-item-actions";
+
+                        const deleteButton = document.createElement("button");
+                        deleteButton.type = "submit";
+                        deleteButton.className = "small button";
+                        deleteButton.textContent = "Delete";
+                        actions.appendChild(deleteButton);
+                        item.appendChild(actions);
+                    }
+
+                    if (prepend) {
+                        list.prepend(item);
+                    } else {
+                        list.appendChild(item);
+                    }
+                    if (typeof window.applyLocalDateTimes === "function") {
+                        window.applyLocalDateTimes(item);
+                    }
+                    if (emptyState) emptyState.style.display = "none";
+                    setDeleteAllVisible(true);
+                };
+
+                const loadOlderNotifications = async () => {
+                    if (loadingOlderNotifications || !hasMoreOlderNotifications)
+                        return;
+
+                    const beforeNotificationId = getOldestNotificationId();
+                    if (!beforeNotificationId) {
+                        hasMoreOlderNotifications = false;
+                        return;
+                    }
+
+                    loadingOlderNotifications = true;
+                    try {
+                        const params = new URLSearchParams();
+                        params.set(
+                            "before_notification_id",
+                            String(beforeNotificationId),
+                        );
+                        params.set("limit", String(NOTIFICATION_PAGE_SIZE));
+
+                        const response = await fetch(
+                            `/v1/auth/notifications?${params.toString()}`,
+                            {
+                                credentials: "same-origin",
+                            },
+                        );
+                        if (!response.ok) {
+                            throw new Error("notifications fetch failed");
+                        }
+
+                        const payload = await response.json();
+                        const notifications = Array.isArray(
+                            payload?.notifications,
+                        )
+                            ? payload.notifications
+                            : [];
+                        for (const notification of notifications) {
+                            renderNotification(notification, {
+                                prepend: false,
+                            });
+                        }
+
+                        hasMoreOlderNotifications = Boolean(payload?.has_more);
+                        if (notifications.length === 0) {
+                            hasMoreOlderNotifications = false;
+                        }
+                    } catch (_error) {
+                        hasMoreOlderNotifications = false;
+                    } finally {
+                        loadingOlderNotifications = false;
+                    }
+                };
+
+                const maybeLoadOlderNotifications = () => {
+                    if (!menu.matches(":popover-open")) return;
+                    const remaining =
+                        menu.scrollHeight -
+                        (menu.scrollTop + menu.clientHeight);
+                    if (remaining <= 120) {
+                        loadOlderNotifications();
+                    }
+                };
+
+                const existingList = getNotificationList();
+                const hasInitialItems =
+                    existingList.querySelectorAll(".notification-item").length >
+                    0;
+                setDeleteAllVisible(hasInitialItems);
+                hasMoreOlderNotifications = hasInitialItems;
+
+                menu.addEventListener("scroll", maybeLoadOlderNotifications);
+                menu.addEventListener("toggle", () => {
+                    if (!menu.matches(":popover-open")) return;
+                    window.setTimeout(() => {
+                        maybeLoadOlderNotifications();
+                        if (
+                            menu.scrollHeight <= menu.clientHeight + 24 &&
+                            hasMoreOlderNotifications
+                        ) {
+                            loadOlderNotifications();
+                        }
+                    }, 20);
+                });
+
+                menu.addEventListener("submit", async (event) => {
+                    const readAllTarget = event.target.closest(
+                        "form[action='/notifications/read-all']",
+                    );
+                    if (readAllTarget) {
+                        event.preventDefault();
+                        if (readAllTarget.dataset.pending === "1") return;
+                        readAllTarget.dataset.pending = "1";
+                        const readAllButton = readAllTarget.querySelector(
+                            "button[type='submit']",
+                        );
+                        if (readAllButton) readAllButton.disabled = true;
+
+                        try {
+                            const response = await fetch(readAllTarget.action, {
+                                method: "POST",
+                                credentials: "same-origin",
+                                headers: { "X-Requested-With": "fetch" },
+                            });
+
+                            if (
+                                response.redirected &&
+                                /\/login(?:$|[?#/])/.test(response.url)
+                            ) {
+                                window.location.href = response.url;
+                                return;
+                            }
+
+                            if (!response.ok) {
+                                throw new Error(
+                                    "mark notifications read failed",
+                                );
+                            }
+
+                            markAllNotificationsReadLocally();
+                        } catch (_error) {
+                            readAllTarget.submit();
+                            return;
+                        } finally {
+                            readAllTarget.dataset.pending = "0";
+                            if (readAllButton) readAllButton.disabled = false;
+                        }
+                        return;
+                    }
+                });
+
+                menu.addEventListener("click", (event) => {
+                    const notificationLink = event.target.closest(
+                        ".notification-item-link",
+                    );
+                    if (!notificationLink) return;
+
+                    const item = notificationLink.closest(".notification-item");
+                    if (!item) return;
+
+                    const wasUnread = markNotificationItemReadLocally(item);
+                    if (wasUnread) {
+                        setUnreadCount(currentUnreadCount() - 1);
+                    }
+
+                    const notificationId = Number.parseInt(
+                        item.dataset.notificationId || "0",
+                        10,
+                    );
+                    if (!Number.isFinite(notificationId) || notificationId <= 0)
+                        return;
+
+                    closeNotificationsPopover();
+
+                    fetch(`/notifications/read/${notificationId}`, {
+                        method: "POST",
+                        credentials: "same-origin",
+                        headers: { "X-Requested-With": "fetch" },
+                        keepalive: true,
+                    }).catch(() => {});
+                });
+
+                const parsePayload = (raw) => {
+                    try {
+                        return JSON.parse(raw);
+                    } catch (_error) {
+                        return null;
+                    }
+                };
+
+                const parseUnreadCount = (value) => {
+                    const parsed = Number.parseInt(String(value ?? ""), 10);
+                    if (!Number.isFinite(parsed)) return null;
+                    return Math.max(0, parsed);
+                };
+
+                const connectInboxNotifications = () => {
+                    const proto = location.protocol === "https:" ? "wss" : "ws";
+                    const ws = new WebSocket(
+                        `${proto}://${location.host}/ws/inbox`,
+                    );
+
+                    ws.onmessage = (event) => {
+                        const payload = parsePayload(event.data);
+                        if (
+                            !payload ||
+                            payload.kind !== "notification" ||
+                            !payload.notification
+                        ) {
+                            return;
+                        }
+
+                        const notificationId = Number.parseInt(
+                            payload.notification.notification_id ?? "0",
+                            10,
+                        );
+                        let replacedUnread = false;
+                        if (
+                            Number.isFinite(notificationId) &&
+                            notificationId > 0
+                        ) {
+                            const existing =
+                                getNotificationList().querySelector(
+                                    `[data-notification-id="${notificationId}"]`,
+                                );
+                            replacedUnread = Boolean(
+                                existing &&
+                                existing.classList.contains("unread"),
+                            );
+                        }
+
+                        renderNotification(payload.notification, {
+                            prepend: true,
+                        });
+
+                        const unreadFromPayload = parseUnreadCount(
+                            payload.unread_count,
+                        );
+                        if (unreadFromPayload !== null) {
+                            setUnreadCount(unreadFromPayload);
+                        } else {
+                            const incomingUnread =
+                                payload.notification.is_unread !== false;
+                            const adjusted =
+                                currentUnreadCount() -
+                                (replacedUnread ? 1 : 0) +
+                                (incomingUnread ? 1 : 0);
+                            setUnreadCount(
+                                Number.isFinite(adjusted) ? adjusted : 0,
+                            );
+                        }
+                    };
+
+                    ws.onclose = () => {
+                        setTimeout(connectInboxNotifications, 1500);
+                    };
+                };
+
+                connectInboxNotifications();
+            })();
+        </script>
+        <script src="/assets/fetch.js"></script>
+    </body>
+</html>

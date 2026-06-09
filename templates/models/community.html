@@ -1,0 +1,226 @@
+{% extends "base.html" %} {% block title %}Instavox | {{ title }}{% endblock %}
+{% block content %}
+{% if found %}
+<div class="community-page-layout">
+    <div class="community-feed-column">
+        <section class="content box">
+            <div class="friend-list-row">
+                <img
+                    src="{{ community.profile_photo_url }}"
+                    alt="{{ community.name }} avatar"
+                    class="post-author-avatar"
+                    style="{{ community.profile_photo_style }}"
+                />
+                <div class="friend-list-meta">
+                    <h1>{{ community.name }}</h1>
+                    <small>Community #{{ community.community_id }}</small>
+                    <small>/community/{{ community.slug }}</small>
+                    {% if community.owner_username != "" %}
+                    <small>Created by @{{ community.owner_username }}</small>
+                    {% endif %}
+                    <small class="post-date" data-utc-datetime="{{ community.created_at }}"
+                        >{{ community.created_at }}</small
+                    >
+                </div>
+            </div>
+            <div class="horizontal flex start no padding" style="gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem">
+                {% if user_id > 0 %}
+                {% if can_join %}
+                <form action="/community/{{ community.slug }}/join" method="post">
+                    <button type="submit" class="small button">Join community</button>
+                </form>
+                {% else if can_quit %}
+                <form action="/community/{{ community.slug }}/quit" method="post">
+                    <button
+                        type="submit"
+                        class="small button"
+                    >
+                        Quit
+                    </button>
+                </form>
+                {% endif %}
+                {% if !can_manage %}
+                <form action="/community/{{ community.slug }}/ignore" method="post">
+                    <button
+                        type="submit"
+                        class="small button"
+                    >
+                        {% if is_ignored %}Unignore{% else %}Ignore{% endif %}
+                    </button>
+                </form>
+                {% endif %}
+                {% else %}
+                <a href="/login" class="small button">Login to join community</a>
+                {% endif %}
+                {% if can_manage %}
+                <a href="/community/{{ community.slug }}/settings" class="small button"
+                    >Community settings</a
+                >
+                {% endif %}
+            </div>
+            {% if can_team_moderate %}
+            <div class="horizontal flex start no padding" style="gap: 0.5rem; margin-top: 0.5rem">
+                <form action="/community/{{ community.slug }}/ban" method="post">
+                    <button
+                        type="submit"
+                        class="small button"
+                        style="background: hsl(0, 0%, 35%); border-color: hsl(0, 0%, 35%)"
+                    >
+                        Ban community
+                    </button>
+                </form>
+                <form action="/community/{{ community.slug }}/delete" method="post">
+                    <button
+                        type="submit"
+                        class="small button"
+                        style="background: hsl(0, 62%, 42%); border-color: hsl(0, 62%, 42%)"
+                    >
+                        Delete community
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        </section>
+<aside class="community-sidebar-column">
+        <section class="content box">
+            <h3>About</h3>
+            {% if community.description != "" %}
+            <p>{{ community.description }}</p>
+            {% else %}
+            <p>No description yet.</p>
+            {% endif %}
+            <small>
+                {{ community.member_count }} members | {{ community.post_count }} posts
+            </small>
+            {% if community.visibility == "private" %}
+            <small>Private community</small>
+            {% else %}
+            <small>Public community</small>
+            {% endif %}
+        </section>
+
+        <section class="content box">
+            <h3>Rules</h3>
+            {% if community_rules.len() == 0 %}
+            <p>No community rules yet.</p>
+            {% else %}
+            <ol>
+                {% for rule in community_rules %}
+                <li>
+                    <strong>{{ rule.title }}</strong>
+                    {% if rule.body != "" %}
+                    <br />
+                    <small>{{ rule.body }}</small>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ol>
+            {% endif %}
+        </section>
+
+        <section class="content box">
+            <h3>Moderators</h3>
+            {% if community_moderators.len() == 0 %}
+            <p>No moderators listed yet.</p>
+            {% else %}
+            {% for moderator in community_moderators %}
+            <article class="friend-list-row">
+                <a
+                    href="/user/{{ moderator.username }}@{{ local_profile_domain }}"
+                    class="friend-list-link"
+                >
+                    <img
+                        src="{{ moderator.profile_photo_url }}"
+                        alt="@{{ moderator.username }} avatar"
+                        class="post-author-avatar"
+                        style="{{ moderator.profile_photo_style }}"
+                    />
+                    <div class="friend-list-meta">
+                        <strong>@{{ moderator.username }}</strong>
+                        {% if moderator.preferred_username != "" %}
+                        <small>{{ moderator.preferred_username }}</small>
+                        {% endif %} {% if moderator.is_owner %}
+                        <small>Admin</small>
+                        {% else %}
+                        <small>Moderator</small>
+                        {% endif %}
+                    </div>
+                </a>
+            </article>
+                {% endfor %}
+            {% endif %}
+        </section>
+    </aside>
+    </div>
+</div>
+{% if can_create_post %}
+        <section class="content box post-create-card">
+            <h2>Create a Community Post</h2>
+            <form
+                action="/community/{{ community.slug }}/posts"
+                method="post"
+                enctype="multipart/form-data"
+                class="post-create-form"
+            >
+                <label for="community-post-text">Text</label>
+                <textarea
+                    id="community-post-text"
+                    name="text"
+                    placeholder="Share with this community... Paste links directly in text for preview."
+                    maxlength="10000"
+                ></textarea>
+
+                <label for="community-post-images">Images (optional)</label>
+                <input
+                    type="file"
+                    id="community-post-images"
+                    name="images"
+                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/avif,image/bmp"
+                    multiple
+                />
+
+                <button type="submit" class="main">Publish</button>
+            </form>
+        </section>
+        {% endif %}
+
+<section class="content box">
+            <h2>Posts</h2>
+            <div class="community-tab-bar">
+                <a
+                    href="/community/{{ community.slug }}?sort=hot"
+                    class="small button {% if active_sort == "hot" %}main{% endif %}"
+                    >Hot</a
+                >
+                <a
+                    href="/community/{{ community.slug }}?sort=new"
+                    class="small button {% if active_sort == "new" %}main{% endif %}"
+                    >New</a
+                >
+                <a
+                    href="/community/{{ community.slug }}?sort=top"
+                    class="small button {% if active_sort == "top" %}main{% endif %}"
+                    >Top</a
+                >
+            </div>
+        </section>
+<section class="post-feed-list" id="community-post-feed">
+            {% if can_view_posts %}
+            {% if posts.len() == 0 %}
+            <article class="content box post-card">
+                <p>No posts in this community yet.</p>
+            </article>
+            {% endif %} {% for post in posts %} {% include "models/post.html" %} {% endfor %}
+            {% else %}
+            <article class="content box post-card">
+                <p>This community is private. Join it to view posts.</p>
+            </article>
+            {% endif %}
+        </section>
+{% else %}
+<section class="content box">
+    <h1>Community Not Found</h1>
+    <p>The community page you requested does not exist.</p>
+    <a href="/communities" class="small button">Back to communities</a>
+</section>
+{% endif %} {% endblock %}

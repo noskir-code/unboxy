@@ -1,0 +1,17 @@
+[package]
+name = "unboxy"
+version = "1.1.0"
+edition = "2024"
+
+[dependencies]
+activitypub_federation = "0.6.5"
+askama = "0.16.0"
+axum = { version = "0.8.9", features = ["multipart", "ws"] }
+chrono = { version = "0.4.44", features = ["serde"] }
+serde = "1.0.228"
+serde_json = "1.0.150"
+sqlx = { version = "0.8.6", features = ["chrono", "migrate", "postgres", "runtime-tokio-rustls"] }
+tokio = { version = "1.52.3", features = ["full"] }
+tower = "0.5.3"
+tower-sessions = "0.15.0"
+tracing = "0.1.44"
